@@ -72,14 +72,26 @@
       "properties": {
         "mode1_interpretation": {
           "type": "object",
-          "required": ["aivss", "basis", "status"],
+          "required": ["aivss", "cvss_bte", "td_delta", "basis", "status"],
           "additionalProperties": false,
           "properties": {
             "aivss": {
               "type": "number",
               "minimum": 0.0,
               "maximum": 10.0,
-              "description": "Equals cvss.cvss_bte. AI metrics do not modify the score in interpretation mode."
+              "description": "Published AIVSS risk score: min(10, CVSS-BTE + TD_delta)."
+            },
+            "cvss_bte": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 10.0,
+              "description": "Interpolated CVSS Base+Threat+Environmental score before TD adjustment."
+            },
+            "td_delta": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 0.5,
+              "description": "Traceability Deficit risk adjustment (TD:H=0.5, TD:M=0.2, TD:L=0.0)."
             },
             "basis": { "type": "string" },
             "status": { "const": "normative" }
@@ -87,11 +99,23 @@
         },
         "mode2_macrovector": {
           "type": "object",
-          "required": ["aivss_btea", "promoted_macrovector", "delta", "saturated", "status"],
+          "required": [
+            "aivss_btea",
+            "btea_before_td",
+            "promoted_macrovector",
+            "macrovector_delta",
+            "td_delta",
+            "delta",
+            "saturated",
+            "status"
+          ],
           "additionalProperties": false,
           "properties": {
             "aivss_btea": { "type": "number", "minimum": 0.0, "maximum": 10.0 },
+            "btea_before_td": { "type": "number", "minimum": 0.0, "maximum": 10.0 },
             "promoted_macrovector": { "type": "string", "pattern": "^[0-2]{6}$" },
+            "macrovector_delta": { "type": "number", "minimum": 0.0 },
+            "td_delta": { "type": "number", "minimum": 0.0, "maximum": 0.5 },
             "delta": { "type": "number", "minimum": 0.0 },
             "saturated": { "type": "boolean" },
             "status": { "type": "string", "pattern": "^provisional" }
@@ -156,7 +180,8 @@
             "automatable_source": { "type": "string" },
             "technical_impact": { "enum": ["partial", "total"] },
             "technical_impact_source": { "type": "string" },
-            "ai_effect_class": { "enum": ["A0", "A1", "A2"] }
+            "ai_effect_class": { "enum": ["A0", "A1", "A2"] },
+            "td": { "enum": ["H", "M", "L"] }
           }
         },
         "bod_2604_timeline": { "$ref": "#/$defs/timeline" },

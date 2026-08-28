@@ -1,0 +1,24 @@
+{
+  "include_decision": true,
+  "include_priority": true,
+  "org_context": {
+    "business_criticality": "high",
+    "reach": "high",
+    "likelihood": 0.65
+  },
+  "provenance": {
+    "assessor": "aivss-calc examples",
+    "assessor_kind": "human",
+    "tool": "aivss-calc",
+    "tool_version": "1.0.1",
+    "assessed_at": "2026-08-27"
+  },
+  "finding_id": "AIVSS-ASI08-001",
+  "risk_category": "ASI08",
+  "title": "Faulty planner triggers cascading downstream task failures",
+  "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:H/VA:H/SC:H/SI:H/SA:L/E:P/LC:I/CP:S/AP:L/SR:P/TD:H",
+  "publicly_exposed": true,
+  "evidence": {
+    "poc": true
+  }
+}
