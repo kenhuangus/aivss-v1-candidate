@@ -8,6 +8,18 @@ const closeDetailBtn = document.getElementById("close-detail");
 
 let rows = [];
 
+async function fetchJson(apiPath, staticPath) {
+  try {
+    const apiRes = await fetch(apiPath);
+    if (apiRes.ok) return apiRes.json();
+  } catch (_) {
+    /* local API unavailable — use static bundle */
+  }
+  const staticRes = await fetch(staticPath);
+  if (!staticRes.ok) throw new Error(`HTTP ${staticRes.status}`);
+  return staticRes.json();
+}
+
 function scoreWidth(value) {
   if (value == null || Number.isNaN(value)) return "0%";
   return `${Math.max(0, Math.min(10, value)) * 10}%`;
@@ -77,9 +89,7 @@ function renderCards(data) {
 
 async function loadTop10() {
   grid.innerHTML = "<p class='loading'>Loading OWASP Agentic Top 10 scores…</p>";
-  const res = await fetch("/api/top10");
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  rows = await res.json();
+  rows = await fetchJson("/api/top10", "data/top10.json");
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new Error("No ASI scenarios returned");
   }
@@ -98,13 +108,17 @@ async function showDetail(asi) {
   detailTitle.textContent = `${asi} — Full Assessment`;
   detailBody.innerHTML = "<p class='loading'>Loading report…</p>";
 
-  const res = await fetch(`/api/scenario/${encodeURIComponent(asi)}`);
-  if (!res.ok) {
-    detailBody.innerHTML = `<p class="error">Failed to load ${asi}: HTTP ${res.status}</p>`;
+  let payload;
+  try {
+    payload = await fetchJson(
+      `/api/scenario/${encodeURIComponent(asi)}`,
+      `data/${asi.toLowerCase()}.json`,
+    );
+  } catch (err) {
+    detailBody.innerHTML = `<p class="error">Failed to load ${asi}: ${err.message}</p>`;
     return;
   }
 
-  const payload = await res.json();
   const report = payload.report;
   if (!report?.scores) {
     detailBody.innerHTML = `<p class="error">Invalid report payload for ${asi}.</p>`;

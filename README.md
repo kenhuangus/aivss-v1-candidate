@@ -58,6 +58,8 @@ Launch **`aivss-calc demo`** to open the OWASP Agentic Top 10 dashboard at
 http://127.0.0.1:8765/ — Mode 1 scores, candidate scores, effect classes, and
 SSVC/BOD remediation timelines for all ten ASI reference scenarios.
 
+Live demo (GitHub Pages): https://kenhuangus.github.io/aivss-v1-candidate/
+
 Regenerate all OWASP ASI reference inputs and the summary from the single
 scenario catalog:
 

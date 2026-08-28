@@ -4,3 +4,7 @@ __pycache__/
 *.egg-info/
 docs/qa_pages/
 docs/live_qa_export.pdf
+dist/
+dogfood-output/
+_site/
+web/favicon-temp
