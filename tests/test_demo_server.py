@@ -86,7 +86,7 @@ def test_static_build_includes_web_assets():
         ):
             assert path.is_file(), path
         html = (out / "index.html").read_text(encoding="utf-8")
-        assert 'href="/web/style.css"' in html
+        assert 'href="web/style.css"' in html
         assert (out / "web" / "style.css").read_text(encoding="utf-8").strip()
     finally:
         shutil.rmtree(out, ignore_errors=True)
