@@ -208,12 +208,36 @@ button.ghost { background: transparent; }
 
 .timeline strong { color: var(--text); }
 
+.overlay {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.loading {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.error {
+  color: var(--danger);
+  background: rgba(255, 123, 114, 0.08);
+  border: 1px solid rgba(255, 123, 114, 0.25);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
 .detail {
   margin-top: 1.5rem;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
+  position: relative;
+}
+
+.detail > .ghost {
+  float: right;
+  margin-bottom: 0.5rem;
 }
 
 .detail.hidden { display: none; }

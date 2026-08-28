@@ -50,6 +50,7 @@ def _top10_payload() -> list[dict]:
                 "aivss_recommended_timeline": decision.get("aivss_recommended_timeline"),
                 "aivss_recommended_label": decision.get("aivss_recommended_label"),
                 "overlay_triggered": decision.get("overlay_triggered"),
+                "escalated": decision.get("escalated"),
             }
         )
     return rows
