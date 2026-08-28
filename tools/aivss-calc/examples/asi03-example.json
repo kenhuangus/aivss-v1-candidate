@@ -1,0 +1,24 @@
+{
+  "include_decision": true,
+  "include_priority": true,
+  "org_context": {
+    "business_criticality": "high",
+    "reach": "high",
+    "likelihood": 0.65
+  },
+  "provenance": {
+    "assessor": "aivss-calc examples",
+    "assessor_kind": "human",
+    "tool": "aivss-calc",
+    "tool_version": "1.0.0",
+    "assessed_at": "2026-08-27"
+  },
+  "finding_id": "AIVSS-ASI03-001",
+  "risk_category": "ASI03",
+  "title": "Stolen service credential used for lateral agent actions",
+  "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:H/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H/E:P/LC:M/CP:N/AP:L/SR:R/TD:L",
+  "publicly_exposed": false,
+  "evidence": {
+    "observed_local": true
+  }
+}

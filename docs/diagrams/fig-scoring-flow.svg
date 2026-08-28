@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 640" width="1400" height="640">
+
+<style>
+  text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+  .title { font-size: 30px; font-weight: 700; fill: #0f172a; }
+  .label { font-size: 26px; font-weight: 600; fill: #1e293b; }
+  .small { font-size: 24px; fill: #475569; }
+  .mono { font-family: Consolas, 'Courier New', monospace; font-size: 24px; fill: #1d4ed8; }
+</style>
+<rect width="1400" height="640" fill="#ffffff"/>
+<text x="40" y="48" class="title">Assessment Flow</text>
+
+<rect x="40" y="90" width="170" height="110" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="125" y="135" text-anchor="middle" class="label">CVSS v4.0</text>
+<text x="125" y="170" text-anchor="middle" class="label">vector</text>
+
+<rect x="250" y="85" width="170" height="120" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="335" y="125" text-anchor="middle" class="label">Agentic AI</text>
+<text x="335" y="155" text-anchor="middle" class="label">Profile</text>
+<text x="335" y="185" text-anchor="middle" class="small">optional</text>
+
+<rect x="460" y="80" width="190" height="130" rx="12" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+<text x="555" y="125" text-anchor="middle" class="label">CVSS-BTE</text>
+<text x="555" y="160" text-anchor="middle" class="mono">7.8</text>
+<text x="555" y="195" text-anchor="middle" class="small">severity</text>
+
+<rect x="690" y="80" width="190" height="130" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="785" y="125" text-anchor="middle" class="label">AI class</text>
+<text x="785" y="160" text-anchor="middle" class="mono">A2</text>
+<text x="785" y="195" text-anchor="middle" class="small">profile</text>
+
+<rect x="920" y="75" width="200" height="140" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+<text x="1020" y="120" text-anchor="middle" class="label">AIVSS</text>
+<text x="1020" y="155" text-anchor="middle" class="mono">7.8</text>
+<text x="1020" y="190" text-anchor="middle" class="small">primary score</text>
+
+<line x1="210" y1="145" x2="250" y2="145" stroke="#64748b" stroke-width="3" marker-end="url(#b)"/>
+<line x1="420" y1="145" x2="460" y2="145" stroke="#64748b" stroke-width="3" marker-end="url(#b)"/>
+<line x1="650" y1="145" x2="690" y2="145" stroke="#64748b" stroke-width="3" marker-end="url(#b)"/>
+<line x1="880" y1="145" x2="920" y2="145" stroke="#64748b" stroke-width="3" marker-end="url(#b)"/>
+
+<rect x="1160" y="230" width="200" height="120" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1260" y="275" text-anchor="middle" class="label">BTEA</text>
+<text x="1260" y="310" text-anchor="middle" class="mono">9.0</text>
+<text x="1260" y="340" text-anchor="middle" class="small">optional</text>
+<line x1="785" y1="210" x2="785" y2="250" stroke="#64748b" stroke-width="3"/>
+<line x1="785" y1="250" x2="1160" y2="250" stroke="#64748b" stroke-width="3"/>
+<line x1="1160" y1="250" x2="1160" y2="230" stroke="#64748b" stroke-width="3" marker-end="url(#b)"/>
+
+<rect x="40" y="380" width="1320" height="220" rx="14" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text x="700" y="430" text-anchor="middle" class="title" fill="#92400e">Remediation timeline (parallel track)</text>
+<text x="60" y="475" class="small">Inputs: KEV · exposure · automatable · technical impact · AI class</text>
+<text x="60" y="515" class="small">Evidence ladder: KEV → Vulnrichment → observed → PoC → none (EPSS: dated metadata only, Section 12.3.1)</text>
+<text x="60" y="555" class="mono">Output: BOD 26-04 baseline + AIVSS recommendation</text>
+
+<defs><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L10,5 L0,9 z" fill="#64748b"/></marker></defs>
+</svg>

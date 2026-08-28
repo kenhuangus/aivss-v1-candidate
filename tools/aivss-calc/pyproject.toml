@@ -1,0 +1,27 @@
+[project]
+name = "aivss-calc"
+version = "1.0.0"
+description = "AIVSS v1.0 reference calculator: CVSS-compatible AI scoring with a CISA BOD 26-04 decision track"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["cvss>=3.6"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "jsonschema>=4"]
+
+[project.scripts]
+aivss-calc = "aivss_calc.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["aivss_calc*"]
+
+[tool.setuptools.package-data]
+aivss_calc = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

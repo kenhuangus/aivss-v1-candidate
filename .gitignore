@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+docs/qa_pages/
+docs/live_qa_export.pdf
