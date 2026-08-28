@@ -5,8 +5,8 @@ CVSS-severity-driven remediation with a four-variable decision model. CISA
 publishes three of the four variables for every CVE ID through the Vulnrichment
 Program; the fourth (asset exposure) is supplied by the asset owner.
 
-AIVSS does not fork this model. It consumes it verbatim and adds the AI Effect
-Class as a fifth, clearly separated decision point. The unmodified BOD timeline
+AIVSS does not fork this model. It consumes it verbatim and adds the Agentic
+Effect Class as a fifth, clearly separated decision point. The unmodified BOD timeline
 is always reported alongside the AIVSS recommendation so that an FCEB agency can
 never mistake an AIVSS overlay for its compliance obligation.
 
@@ -28,7 +28,7 @@ TIMELINE_LABELS: dict[str, str] = {
     "3DF": "Remediate within 3 days and carry out a forensic triage of the asset",
 }
 
-# Ordered least to most urgent. Used for the AI Effect Class escalation.
+# Ordered least to most urgent. Used for Agentic Effect Class escalation.
 TIMELINE_URGENCY: tuple[str, ...] = ("FSU", "60D", "14D", "3D", "3DF")
 
 # All 16 rows of BOD 26-04 Table 1, keyed (in_kev, publicly_exposed, automatable,
@@ -155,21 +155,21 @@ def advance_timeline(timeline: str, steps: int = 1) -> str:
     return TIMELINE_URGENCY[min(index + steps, ceiling)]
 
 
-def escalate(timeline: str, ai_class: str) -> str:
-    """Escalate a timeline by one tier when the AI Effect Class is A2.
+def escalate(timeline: str, agentic_effect_class: str) -> str:
+    """Escalate a timeline by one tier when the Agentic Effect Class is A2.
 
     Escalation stops at 3D. AIVSS never escalates into 3DF, because the forensic
     triage obligation is a CISA determination tied to KEV listing, not something
     a third-party framework may impose.
     """
-    return advance_timeline(timeline, 1) if ai_class == "A2" else timeline
+    return advance_timeline(timeline, 1) if agentic_effect_class == "A2" else timeline
 
 
 def decide(
     *,
     evidence: ExploitationEvidence,
     publicly_exposed: bool,
-    ai_class: str = "A0",
+    agentic_effect_class: str = "A0",
     td: str | None = None,
     automatable: bool | None = None,
     technical_impact: str | None = None,
@@ -222,7 +222,7 @@ def decide(
         automatable=bool(automatable),
         technical_impact=technical_impact,
     )
-    escalation_steps = (1 if ai_class == "A2" else 0) + (1 if td == "H" else 0)
+    escalation_steps = (1 if agentic_effect_class == "A2" else 0) + (1 if td == "H" else 0)
     recommended = advance_timeline(base, escalation_steps)
 
     return {
@@ -234,7 +234,7 @@ def decide(
             "automatable_source": automatable_source,
             "technical_impact": technical_impact,
             "technical_impact_source": impact_source,
-            "ai_effect_class": ai_class,
+            "agentic_effect_class": agentic_effect_class,
             "td": td,
         },
         "bod_2604_timeline": base,

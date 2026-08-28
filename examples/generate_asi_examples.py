@@ -148,7 +148,7 @@ def main() -> None:
                 "vector": report["vector"],
                 "aivss": scores["mode1_interpretation"]["aivss"],
                 "btea": scores["mode2_macrovector"]["aivss_btea"],
-                "ai_class": report["ai_profile"]["effect_class"],
+                "agentic_effect_class": report["agentic_ai_profile"]["agentic_effect_class"],
                 "bod": decision.get("bod_2604_label"),
                 "aivss_timeline": decision.get("aivss_recommended_label"),
                 "priority_band": priority.get("band") if priority else None,

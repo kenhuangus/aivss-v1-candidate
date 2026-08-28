@@ -204,7 +204,9 @@ AI_CLASS_PROMOTIONS: dict[str, tuple[int, ...]] = {
 def promote(mv: str, ai_class: str) -> str:
     """Apply the S2 equivalence-class promotion for an AI Effect Class."""
     if ai_class not in AI_CLASS_PROMOTIONS:
-        raise ValueError(f"Unknown AI Effect Class {ai_class!r}; expected A0, A1, or A2")
+        raise ValueError(
+            f"Unknown Agentic Effect Class {ai_class!r}; expected A0, A1, or A2"
+        )
     digits = list(mv)
     for index in AI_CLASS_PROMOTIONS[ai_class]:
         digits[index] = str(max(0, int(digits[index]) - 1))
@@ -239,7 +241,7 @@ def lookup_aivss(
         "macrovector": base_mv,
         "macrovector_ceiling": base_ceiling,
         "cvss_bte": cvss_bte,
-        "ai_class": ai_class,
+        "agentic_effect_class": ai_class,
         "promoted_macrovector": promoted_mv,
         "promoted_macrovector_ceiling": promoted_ceiling,
         "aivss_btea": aivss_btea,

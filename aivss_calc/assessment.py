@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .ai_metrics import AIProfile, apply_td_risk, split_ai_vector, td_risk_delta
+from .ai_metrics import AGENTIC_EFFECT_CLASS_LABELS, AIProfile, apply_td_risk, split_ai_vector, td_risk_delta
 from .cvss_score import score_cvss_bte
 from .decision import ExploitationEvidence, decide
 from .macrovector import lookup_aivss, macrovector, parse_cvss_vector
@@ -13,7 +13,7 @@ from .priority import compute_priority
 from .taxonomy import ASI_TOP_10, normalize_asi
 
 SPEC_VERSION = "1.0"
-RUBRIC_VERSION = "1.0.1"
+RUBRIC_VERSION = "1.0.2"
 VALID_ASSESSOR_KINDS = frozenset({"human", "scanner", "llm_assisted", "imported"})
 
 
@@ -81,7 +81,7 @@ def assess(a: Assessment) -> dict[str, Any]:
     if profile is None or profile.td is None:
         raise ValueError(
             "TD (Traceability Deficit) is mandatory in every conformant assessment; "
-            "include TD:H, TD:M, or TD:L in the vector or ai_profile"
+            "include TD:H, TD:M, or TD:L in the vector or agentic_ai_profile"
         )
 
     metrics = parse_cvss_vector(cvss_only)
@@ -116,7 +116,7 @@ def assess(a: Assessment) -> dict[str, Any]:
                 "td_delta": td_delta,
                 "basis": (
                     "AIVSS = min(10, CVSS-BTE + TD_delta); "
-                    "LC/CP/AP/SR drive AI Effect Class only"
+                    "LC/CP/AP/SR determine Agentic Effect Class only"
                 ),
                 "status": "normative",
             },
@@ -136,18 +136,20 @@ def assess(a: Assessment) -> dict[str, Any]:
 
     if profile is not None:
         metrics_out = profile.describe() if profile.scored_present or profile.td is not None else {}
-        report["ai_profile"] = {
+        report["agentic_ai_profile"] = {
             "present": profile.scored_present,
             "metrics": metrics_out,
             "vector_fragment": profile.to_vector_fragment(),
-            "effect_class": ai_class,
+            "agentic_effect_class": ai_class,
+            "agentic_effect_class_label": AGENTIC_EFFECT_CLASS_LABELS[ai_class],
         }
     else:
-        report["ai_profile"] = {
+        report["agentic_ai_profile"] = {
             "present": False,
             "metrics": {},
             "vector_fragment": "",
-            "effect_class": "A0",
+            "agentic_effect_class": "A0",
+            "agentic_effect_class_label": AGENTIC_EFFECT_CLASS_LABELS["A0"],
         }
 
     if a.include_decision:
@@ -159,7 +161,7 @@ def assess(a: Assessment) -> dict[str, Any]:
         report["decision"] = decide(
             evidence=a.evidence,
             publicly_exposed=a.publicly_exposed,
-            ai_class=ai_class,
+            agentic_effect_class=ai_class,
             td=td,
             automatable=a.automatable,
             technical_impact=a.technical_impact,

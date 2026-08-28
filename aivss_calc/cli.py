@@ -43,7 +43,7 @@ def _profile_from_args(args: argparse.Namespace) -> AIProfile | None:
     if scored and len(scored) != 4:
         missing = [k for k in ("LC", "CP", "AP", "SR") if supplied[k] is None]
         raise SystemExit(
-            f"error: all four scored AI metrics are required; missing {', '.join(missing)}"
+            f"error: all four scored Agentic AI metrics are required; missing {', '.join(missing)}"
         )
     if scored and supplied["TD"] is None:
         raise SystemExit("error: TD is mandatory when scored AI metrics are supplied")
@@ -59,7 +59,7 @@ def _add_ai_metric_flags(p: argparse.ArgumentParser) -> None:
         p.add_argument(
             f"--{name.lower()}",
             choices=sorted(AI_METRICS[name]),
-            help=f"AI metric {name}",
+            help=f"Agentic AI metric {name}",
         )
 
 
@@ -101,13 +101,13 @@ def cmd_profile(args: argparse.Namespace) -> int:
         "cvss_bte": score,
         "td_delta": td_risk_delta(td),
         "aivss": aivss,
-        "note": "AIVSS = min(10, CVSS-BTE + TD_delta); LC/CP/AP/SR drive AI Effect Class only.",
+        "note": "AIVSS = min(10, CVSS-BTE + TD_delta); LC/CP/AP/SR determine Agentic Effect Class only.",
     }
     if profile is not None:
-        payload["ai_profile"] = profile.describe()
-        payload["ai_effect_class"] = profile.effect_class()
+        payload["agentic_ai_profile"] = profile.describe()
+        payload["agentic_effect_class"] = profile.agentic_effect_class()
     else:
-        payload["ai_effect_class"] = "A0"
+        payload["agentic_effect_class"] = "A0"
     _emit(payload)
     return 0
 
@@ -118,7 +118,9 @@ def cmd_lookup(args: argparse.Namespace) -> int:
         getattr(args, k.lower(), None) is not None for k in ("LC", "CP", "AP", "SR", "TD")
     ) else embedded
     if profile is None:
-        raise SystemExit("error: lookup requires an AI metric group in the vector or via flags")
+        raise SystemExit(
+            "error: lookup requires an Agentic AI metric group in the vector or via flags"
+        )
     metrics = parse_cvss_vector(cvss_only)
     result = lookup_aivss(cvss_only, metrics, profile.effect_class())
     result["status"] = "provisional -- strawman lookup, pending expert calibration"
@@ -128,20 +130,24 @@ def cmd_lookup(args: argparse.Namespace) -> int:
 
 
 def cmd_decide(args: argparse.Namespace) -> int:
-    ai_class = args.ai_class or "A0"
+    agentic_effect_class = args.agentic_effect_class or "A0"
     sr = None
     cvss_metrics = None
+    td = None
     if args.vector:
         cvss_only, embedded = split_ai_vector(args.vector)
         cvss_metrics = parse_cvss_vector(cvss_only)
-        if embedded is not None and embedded.scored_present:
-            ai_class = embedded.effect_class()
-            sr = embedded.sr
+        if embedded is not None:
+            td = embedded.td
+            if embedded.scored_present:
+                agentic_effect_class = embedded.agentic_effect_class()
+                sr = embedded.sr
     _emit(
         decide(
             evidence=_evidence_from_args(args),
             publicly_exposed=args.publicly_exposed,
-            ai_class=ai_class,
+            agentic_effect_class=agentic_effect_class,
+            td=td,
             automatable=args.automatable,
             technical_impact=args.technical_impact,
             sr=sr,
@@ -158,7 +164,7 @@ def cmd_assess(args: argparse.Namespace) -> int:
     with open(args.input, encoding="utf-8") as handle:
         data = json.load(handle)
 
-    ai = data.get("ai_profile")
+    ai = data.get("agentic_ai_profile") or data.get("ai_profile")
     profile = AIProfile(**{k.lower(): v for k, v in ai.items()}) if ai else None
     org = data.get("org_context")
 
@@ -270,7 +276,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("decide")
     p.add_argument("--vector")
-    p.add_argument("--ai-class", choices=("A0", "A1", "A2"))
+    p.add_argument("--agentic-effect-class", choices=("A0", "A1", "A2"), dest="agentic_effect_class")
     p.add_argument("--publicly-exposed", action="store_true")
     p.add_argument("--cve-id")
     p.add_argument("--automatable", type=_parse_optional_bool)

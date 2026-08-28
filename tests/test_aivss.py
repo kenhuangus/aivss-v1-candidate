@@ -71,7 +71,7 @@ class TestIdentityRule:
     def test_absent_ai_metrics_yield_a0(self):
         metrics = parse_cvss_vector(EXAMPLE_VECTOR)
         result = lookup_aivss(EXAMPLE_VECTOR, metrics, "A0")
-        assert result["ai_class"] == "A0"
+        assert result["agentic_effect_class"] == "A0"
         assert result["aivss_btea"] == EXAMPLE_CVSS_BTE
         assert result["delta"] == 0.0
 
@@ -115,7 +115,7 @@ class TestPromotion:
         assert all(macrovector_score(promote(mv, "A2")) <= 10.0 for mv in _lookup_table())
 
     def test_unknown_class_rejected(self):
-        with pytest.raises(ValueError, match="Unknown AI Effect Class"):
+        with pytest.raises(ValueError, match="Unknown Agentic Effect Class"):
             promote("000000", "A3")
 
 
@@ -293,7 +293,7 @@ class TestBOD2604:
         result = decide(
             evidence=ExploitationEvidence(),
             publicly_exposed=False,
-            ai_class="A0",
+            agentic_effect_class="A0",
             td="H",
             automatable=False,
             technical_impact="partial",
@@ -351,7 +351,7 @@ class TestEvidenceLadder:
         result = decide(
             evidence=ExploitationEvidence(),
             publicly_exposed=True,
-            ai_class="A0",
+            agentic_effect_class="A0",
             sr="R",
             cvss_metrics=parse_cvss_vector(EXAMPLE_VECTOR),
         )
@@ -362,7 +362,7 @@ class TestEvidenceLadder:
         result = decide(
             evidence=ExploitationEvidence(),
             publicly_exposed=True,
-            ai_class="A0",
+            agentic_effect_class="A0",
             sr="R",
             cve_id="CVE-2024-0001",
             cvss_metrics=parse_cvss_vector(EXAMPLE_VECTOR),
@@ -380,7 +380,7 @@ class TestEvidenceLadder:
         result = decide(
             evidence=ExploitationEvidence(cisa_kev=True),
             publicly_exposed=False,
-            ai_class="A2",
+            agentic_effect_class="A2",
             automatable=False,
             technical_impact="partial",
         )
@@ -553,8 +553,8 @@ class TestEndToEnd:
     def test_td_only_yields_identity_and_a0(self):
         td_only = f"{EXAMPLE_VECTOR}/TD:H"
         report = self._assessment(cvss_vector=td_only, ai_profile=None)
-        assert report["ai_profile"]["present"] is False
-        assert report["ai_profile"]["effect_class"] == "A0"
+        assert report["agentic_ai_profile"]["present"] is False
+        assert report["agentic_ai_profile"]["agentic_effect_class"] == "A0"
         assert report["scores"]["mode2_macrovector"]["btea_before_td"] == EXAMPLE_CVSS_BTE
         assert report["scores"]["mode2_macrovector"]["aivss_btea"] == EXAMPLE_AIVSS
         assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_AIVSS

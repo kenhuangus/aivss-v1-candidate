@@ -6,6 +6,7 @@ track aligned to CISA BOD 26-04.
 """
 
 from .ai_metrics import (
+    AGENTIC_EFFECT_CLASS_LABELS,
     AI_METRIC_ORDER,
     AI_METRICS,
     AIProfile,

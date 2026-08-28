@@ -132,10 +132,10 @@ AI_METRICS: dict[str, dict[str, tuple[str, str]]] = {**SCORED_AI_METRICS, "TD": 
 # Appendix E section 8 fixes this order.
 AI_METRIC_ORDER: tuple[str, ...] = ("LC", "CP", "AP", "SR", "TD")
 
-AI_CLASS_LABELS: dict[str, str] = {
-    "A0": "None -- AIVSS equals CVSS-BTE",
-    "A1": "Present",
-    "A2": "Substantial",
+AGENTIC_EFFECT_CLASS_LABELS: dict[str, str] = {
+    "A0": "Absent — no agentic amplification beyond CVSS",
+    "A1": "Present — agentic factors elevate concern",
+    "A2": "Substantial — agentic factors materially worsen impact",
 }
 
 
@@ -170,8 +170,12 @@ class AIProfile:
             return True
         return self.lc == "N" and self.cp == "N" and self.ap == "N" and self.sr == "U"
 
+    def agentic_effect_class(self) -> str:
+        """Derive the Agentic Effect Class (A0 / A1 / A2) from scored metrics."""
+        return self.effect_class()
+
     def effect_class(self) -> str:
-        """Derive the AI Effect Class -- Appendix E section 4."""
+        """Derive the Agentic Effect Class (A0 / A1 / A2)."""
         if not self.scored_present:
             return "A0"
         if self.ap == "L":
