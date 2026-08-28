@@ -1,10 +1,7 @@
-"""CVSS v4.0 MacroVector derivation and the AIVSS Annex A lookup extension.
+"""CVSS v4.0 MacroVector derivation and an experimental AIVSS promotion.
 
-Implements Lookup_AIVSS(EQ1..EQ6, A) from Appendix E section 5.2 using the S2
-"equivalence-class promotion" generator: an AI Effect Class does not add a
-numeric uplift, it selects a neighbouring MacroVector and returns that
-MacroVector's existing CVSS v4.0 score. Every value AIVSS can emit is therefore
-a value FIRST's expert-ranking process already produced.
+The AIVSS mapping is a candidate hypothesis, not part of CVSS and not endorsed
+or calibrated by FIRST. It is off by default in assessment reports.
 
 The vendored lookup table is cvss_lookup.js from the FIRST CVSS v4.0 calculator
 reference implementation (Copyright FIRST, Red Hat, and contributors;
@@ -91,24 +88,32 @@ def parse_cvss_vector(vector: str) -> dict[str, str]:
     parts = text.split("/")
     if not parts or parts[0] != "CVSS:4.0":
         raise ValueError(
-            f"Vector must begin with 'CVSS:4.0/'; got {parts[0] if parts else '' !r}"
+            f"Vector must begin with 'CVSS:4.0/'; got {parts[0] if parts else ''!r}"
         )
 
     metrics: dict[str, str] = {}
+    metric_order = {name: index for index, name in enumerate(ALL_METRICS)}
+    previous_index = -1
     for part in parts[1:]:
         if ":" not in part:
-            raise ValueError(f"Malformed metric segment {part!r} (expected 'KEY:VALUE')")
+            raise ValueError(
+                f"Malformed metric segment {part!r} (expected 'KEY:VALUE')"
+            )
         key, _, value = part.partition(":")
         if key not in ALL_METRICS:
             raise ValueError(f"Unknown CVSS v4.0 metric {key!r}")
         if key in metrics:
             raise ValueError(f"Duplicate metric {key!r}")
+        current_index = metric_order[key]
+        if current_index < previous_index:
+            raise ValueError(f"CVSS metric {key!r} is out of specification order")
         if value not in ALL_METRICS[key]:
             raise ValueError(
                 f"Illegal value {value!r} for metric {key!r}; "
                 f"expected one of {ALL_METRICS[key]}"
             )
         metrics[key] = value
+        previous_index = current_index
 
     missing = [name for name in BASE_METRICS if name not in metrics]
     if missing:
@@ -172,7 +177,9 @@ def macrovector(metrics: dict[str, str]) -> str:
 
     eq6 = (
         0
-        if (cr == "H" and vc == "H") or (ir == "H" and vi == "H") or (ar == "H" and va == "H")
+        if (cr == "H" and vc == "H")
+        or (ir == "H" and vi == "H")
+        or (ar == "H" and va == "H")
         else 1
     )
 
@@ -190,7 +197,7 @@ def macrovector_score(mv: str) -> float:
     return table[mv]
 
 
-# S2 promotion: which EQ index each AI Effect Class promotes by one severity
+# Experimental S2 promotion: which EQ index each AI Effect Class promotes
 # level. EQ1 (AV/PR/UI) and EQ4 (SC/SI/SA) are the only groups promoted, because
 # they are the two whose semantics the AI metrics actually extend, and because
 # promoting either can never violate the joint EQ3/EQ6 constraint.
@@ -218,7 +225,7 @@ def lookup_aivss(
     metrics: dict[str, str],
     ai_class: str,
 ) -> dict[str, object]:
-    """Lookup_AIVSS(EQ1..EQ6, A) -- Appendix E section 5.2, Mode 2.
+    """Run the uncalibrated MacroVector experiment.
 
     A0 satisfies the identity rule against the interpolated CVSS-BTE for this
     vector. A1/A2 apply the expert-ranked ceiling delta from S2 promotion to
@@ -245,6 +252,6 @@ def lookup_aivss(
         "promoted_macrovector": promoted_mv,
         "promoted_macrovector_ceiling": promoted_ceiling,
         "aivss_btea": aivss_btea,
-        "delta": round(aivss_btea - cvss_bte, 1),
+        "delta": round_half_up(aivss_btea - cvss_bte, 1),
         "saturated": promoted_mv == base_mv and ai_class != "A0",
     }

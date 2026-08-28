@@ -1,11 +1,10 @@
 """Annex B -- the withdrawn AIVSS v0.8/v0.9 agentic uplift model. INFORMATIVE ONLY.
 
 Retained solely so organizations holding v0.8 scores can reproduce them and
-migrate. Appendix E records the objection that this construction "risks
-double-counting, treats ordinal factors as additive, and creates severity
-inflation without recalibrating the full scoring model"; the AIVSS working group
-accepts the second and third of those as valid and does not publish this model
-as normative. It is scheduled for removal at v1.0.
+migrate. The construction risks double-counting, treats ordinal factors as
+additive, and creates severity inflation without recalibrating the full scoring
+model. It remains only behind the explicit ``legacy`` command for historical
+reproduction and is not part of the AIVSS 2.0 candidate model.
 
 Two things changed relative to v0.8:
 
@@ -80,10 +79,14 @@ def factor_mean(factors: dict[str, float]) -> float:
     """
     missing = [name for name in AMPLIFICATION_FACTOR_NAMES if name not in factors]
     if missing:
-        raise ValueError(f"Missing amplification factor(s): {', '.join(sorted(missing))}")
+        raise ValueError(
+            f"Missing amplification factor(s): {', '.join(sorted(missing))}"
+        )
     unknown = set(factors) - set(AMPLIFICATION_FACTOR_NAMES)
     if unknown:
-        raise ValueError(f"Unknown amplification factor(s): {', '.join(sorted(unknown))}")
+        raise ValueError(
+            f"Unknown amplification factor(s): {', '.join(sorted(unknown))}"
+        )
     for name in AMPLIFICATION_FACTOR_NAMES:
         if factors[name] not in (0.0, 0.5, 1.0):
             raise ValueError(

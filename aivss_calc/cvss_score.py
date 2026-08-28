@@ -2,20 +2,20 @@
 
 The vendored MacroVector lookup table stores each equivalence class's
 *highest-severity* score. A specific vector within a class is scored lower via
-CVSS v4 interpolation. Mode 1 and the Appendix E identity rule require the
-interpolated score, not the MacroVector ceiling.
+CVSS v4 interpolation. AIVSS retains that official interpolated score rather
+than substituting the MacroVector ceiling.
 """
 
 from __future__ import annotations
 
-import math
+from decimal import Decimal, ROUND_HALF_UP
 
 from cvss import CVSS4
 
 
 def round_half_up(value: float, decimals: int = 1) -> float:
-    multiplier = 10**decimals
-    return math.floor(value * multiplier + 0.5) / multiplier
+    quantum = Decimal(1).scaleb(-decimals)
+    return float(Decimal(str(value)).quantize(quantum, rounding=ROUND_HALF_UP))
 
 
 def score_cvss_bte(cvss_vector: str) -> float:

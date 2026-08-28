@@ -1,101 +1,121 @@
-# AIVSS Scoring Model (v1.0)
+# AIVSS Candidate Algorithms
 
-Reference for the `aivss-calc` calculator. All terminology below is **agentic-application-specific** — AIVSS scores vulnerabilities in autonomous and semi-autonomous agent systems, not generic machine-learning models.
+This document defines calculator behavior for AIVSS 2.0 Candidate, rubric
+2.0.0. Normative metric meanings live only in
+[METRIC-RUBRIC.md](METRIC-RUBRIC.md).
 
-## Definitions
+## Assessment unit
 
-### Agentic AI Profile
+An assessment represents one finding on one coherent exploit path. Do not take
+the worst value of each metric from different paths and combine them into a
+synthetic profile. Score materially different paths separately and retain a
+stable `path_id`.
 
-The extension to a CVSS v4.0 assessment that captures agent-specific properties CVSS does not name explicitly. It comprises six **Agentic AI metrics** appended to the vector string:
+All eight metrics are required. Use `X` when evidence cannot resolve a metric.
+Any `X` makes the profile incomplete, produces effect class `AX` when a
+classifying metric is unknown, and withholds numeric candidate outputs.
 
-| Metric | Name | Role |
-|--------|------|------|
-| **LC** | Language-Mediated Control | How attacker-controlled natural language reaches privileged agent behaviour |
-| **CP** | Context Persistence | How long attacker-controlled context survives across turns or sessions |
-| **AP** | Agentic Propagation | Whether compromise crosses trust boundaries to other agents or tenants |
-| **SR** | Stochastic Exploit Reliability | How reproducibly the attack succeeds under retry |
-| **EX** | Extension Surface | What tool, MCP, plugin, skill, and workflow mechanisms exist on the attack path |
-| **TD** | Traceability Deficit | Whether post-incident reconstruction of agent reasoning and tool calls is feasible |
+## Agentic Effect Class
 
-LC, CP, AP, and SR are **scored together** (all four present or all absent). **EX and TD are mandatory** in every conformant assessment.
+LC, CP, AP, and SR determine an ordinal class:
 
-### Agentic Effect Class (A0 / A1 / A2)
+1. `AX` if any of LC, CP, AP, or SR is `X`.
+2. `A2` if `AP:L`, `LC:{D,I} + CP:C`, or `LC:D + SR:R`.
+3. `A0` if `LC:N + CP:N + AP:N + SR:U`.
+4. `A1` otherwise.
 
-A three-level ordinal label describing **how substantially agentic behaviour amplifies the security consequence** beyond what CVSS alone expresses. It is derived from LC, CP, AP, SR, and EX by a **boolean ladder** — never by arithmetic on metric values.
+EX, PT, CA, and TD do not affect this class. This prevents one factor from
+being counted once in class promotion and again as an additive adjustment.
+`A0` means “no class-based promotion”; it does not mean “no agentic risk.”
+Reports label the class `candidate-unvalidated`: its boundaries are explicit
+and deterministic, but have not yet passed the gates in
+[VALIDATION.md](VALIDATION.md).
 
-| Class | Label | Meaning | Derivation (any one rule yields the class) |
-|-------|-------|---------|---------------------------------------------|
-| **A0** | Absent | No agentic amplification beyond CVSS | All four scored metrics at benign values (LC:N, CP:N, AP:N, SR:U), or scored group absent |
-| **A1** | Present | Agentic factors elevate concern | At least one scored metric above benign, and no A2 rule matched |
-| **A2** | Substantial | Agentic factors materially worsen impact | `AP:L` (lateral propagation), or `LC∈{D,I}` with `CP:C` (persistent language-mediated control), or `LC:D` with `SR:R` (reliable direct language control), or `EX:W` with `LC∈{D,I}` (wide extension surface with language-mediated control) |
+## CVSS result
 
-Agentic Effect Class feeds Mode 2 MacroVector promotion and may advance the remediation overlay when **A2**.
+`cvss_bte` is produced from the separate, valid CVSS v4.0 vector. AIVSS does
+not modify CVSS metric definitions, constants, ordering, or the official CVSS
+score. Consumers must always retain and display `cvss_bte`.
 
-EX and TD adjust the numeric risk score directly (see below); only EX:W participates in the A2 ladder above.
+## Experimental candidate adjustment
 
----
+The calculator exposes this hypothesis for research and sensitivity testing:
 
-## Mode 1 — Interpretation (normative)
+```text
+EX = W:0.40, M:0.15, N:0.00
+PT = H:0.30, M:0.10, L:0.00
+CA = W:0.30, M:0.10, N:0.00
+TD = H:0.50, M:0.20, L:0.00
 
-```
-CVSS-BTE         = interpolated CVSS v4.0 Base + Threat + Environmental score
-EX_delta         = { EX:W → 0.4, EX:M → 0.15, EX:N → 0.0 }
-TD_delta         = { TD:H → 0.5, TD:M → 0.2, TD:L → 0.0 }
-AIVSS            = min(10.0, CVSS-BTE + EX_delta + TD_delta)
-```
-
-**EX (Extension Surface)** reflects operational risk from the breadth of extension mechanisms (native tools, MCP servers, plugins, agentic skills, workflows) reachable on the exploitation path. CVSS **SC/SI/SA** capture downstream *impact* of tool reach; EX captures *what extension mechanisms exist*.
-
-**TD (Traceability Deficit)** reflects operational risk when scope of compromise cannot be bounded after an agent incident.
-
-LC, CP, AP, and SR determine **Agentic Effect Class** only; they do not modify the Mode 1 numeric score except indirectly through Mode 2 promotion.
-
-## Mode 2 — MacroVector extension (provisional)
-
-```
-BTEA_before_agentic_risk = min(10, CVSS-BTE + MacroVector_ceiling_delta(Agentic Effect Class))
-AIVSS-BTEA               = min(10, BTEA_before_agentic_risk + EX_delta + TD_delta)
+delta = EX + PT + CA + TD
+raw_aivss = CVSS-BTE + delta
+aivss = round_half_up(min(10.0, raw_aivss), 1)
 ```
 
-MacroVector promotion follows S2 equivalence-class promotion (EQ3 and EQ0 for A2).
+Zero-impact invariant: if CVSS-BTE is `0.0`, `raw_aivss` and `aivss` remain
+`0.0`. Assurance deficits do not create vulnerability impact by themselves.
 
-## Decision track
+All arithmetic uses decimal values and final half-up rounding. Reports include
+the raw value, each component, the total delta, and whether the 10.0 cap was
+reached.
 
-BOD 26-04 Table 1 is applied unmodified for the compliance timeline. The AIVSS overlay may advance remediation by:
+These weights are ordinal judgments expressed as cardinal increments. They
+have not been fitted to incident loss, expert rankings, exploit prevalence, or
+inter-rater data. Therefore the output status is always
+`experimental-uncalibrated`; it is not a normative AIVSS score. The release
+gates for changing that status are in [VALIDATION.md](VALIDATION.md).
 
-| Factor | Overlay escalation |
-|--------|-------------------|
-| Agentic Effect Class **A2** | +1 tier (max 3D) |
-| **TD:H** | +1 tier (max 3D) |
+## Experimental MacroVector mapping
 
-EX does not advance the remediation overlay in v1.0; its risk is expressed numerically.
+The optional MacroVector experiment maps A1 and A2 to adjacent CVSS
+equivalence classes before applying the candidate adjustment. It is disabled
+in reports unless `include_experimental_mode2` is true.
 
-AIVSS never escalates into **3DF** (forensic triage); that remains a CISA KEV determination.
+This mapping was not produced by FIRST’s CVSS expert-ranking process. It must
+not be described as a CVSS score or FIRST-endorsed result. Saturation and the
+pre-adjustment MacroVector value are reported explicitly.
 
-## AIVSS-P (Level 3)
+## Decision support
 
-Organizational priority uses the **EX- and TD-adjusted** Mode 1 `aivss` as the severity term:
+For a CVE, the calculator can apply the published CISA BOD 26-04 table using:
 
-```
-AIVSS-P = 100 × geometric_mean(aivss/10, business_criticality, reach, likelihood)
-```
+- KEV status
+- asset exposure
+- Automatable
+- Technical Impact
 
-## EX value rubric
+Reports identify the transcribed decision model as `cisa:BOD2604:1.0.0` and
+retain links to both the machine-readable
+[CERT/CC response model](https://certcc.github.io/SSVC/howto/cisa_response/)
+and the CISA directive.
 
-| Value | Label | Risk delta | Meaning |
-|-------|-------|------------|---------|
-| EX:W | Wide | +0.4 | Multiple extension types (tools, MCP, plugins, skills, workflows) with broad or dynamic invocation surface |
-| EX:M | Moderate | +0.15 | One primary extension class with constrained invocation |
-| EX:N | Narrow | +0.0 | No security-relevant extensions on the exploitation path |
+Vulnrichment values take precedence. For non-KEV CVEs with missing metadata,
+the published BOD defaults are `Automatable=no` and `Technical Impact=total`.
+KEV entries must use the metadata CISA publishes for them; the calculator does
+not silently default missing KEV data. The result is labelled a compliance
+result only when `fceb_bod_2604_scope=true`; otherwise
+it is labelled informative CVE guidance because the directive does not apply
+to every organization or system.
 
-## TD value rubric
+For a non-CVE finding, Automatable and Technical Impact must be supplied
+explicitly. The table result is labelled `informative_bod_26_04_analogy`,
+`compliance_applicable=false`, and is not a regulatory deadline. AIVSS never
+derives these inputs from SR or CVSS.
 
-| Value | Label | Risk delta | Meaning |
-|-------|-------|------------|---------|
-| TD:H | High deficit | +0.5 | No reasoning trace or tool audit; reconstruction infeasible |
-| TD:M | Moderate deficit | +0.2 | Partial logging; reconstruction requires significant effort |
-| TD:L | Low deficit | +0.0 | Prompt, trace, and tool-call logging retained and queryable |
+The candidate overlay advances at most one timeline tier if `A2` or `TD:H`.
+Triggers do not stack. It never creates a forensic-triage obligation and never
+removes one: a CISA `3DF` result remains `3DF`.
 
-## CVSS mapping and gaps
+See the official
+[BOD 26-04 directive](https://www.cisa.gov/news-events/directives/bod-26-04-prioritizing-security-updates-based-risk)
+and
+[implementation guidance](https://www.cisa.gov/news-events/directives/bod-26-04-implementation-guidance-prioritizing-security-updates-based-risk).
 
-See [CVSS-MAPPING.md](CVSS-MAPPING.md) for what belongs in CVSS vs Agentic AI metrics, and known gaps CVSS does not cover.
+## Organization-local priority
+
+AIVSS-P is retained only as an optional, organization-local, uncalibrated
+ordering aid. Its output is not comparable across organizations and is omitted
+from public reference examples. Organizations must calibrate its inputs and
+bands against their own outcome data before operational use. They must also
+define residual likelihood so it does not re-count CVSS Threat, SR, exposure,
+or other evidence already present in the assessment.

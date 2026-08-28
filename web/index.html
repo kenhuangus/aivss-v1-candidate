@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AIVSS — OWASP Agentic Top 10 Demo</title>
+  <link rel="stylesheet" href="/web/style.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">AIVSS Calculator · SSVC / BOD 26-04 Layer 3</p>
+      <h1>OWASP Agentic Top 10 — AIVSS Scores</h1>
+      <p class="lede">
+        Mode 1 severity (<code>CVSS-BTE</code>), candidate adjusted score, Agentic AI Effect Class,
+        and SSVC-based remediation timelines for all ten ASI reference scenarios.
+      </p>
+      <div class="badges">
+        <span class="badge normative">Mode 1 normative</span>
+        <span class="badge experimental">Candidate experimental</span>
+        <span class="badge ssvc">SSVC cisa:DT_BOD2604:1.0.0</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="toolbar">
+      <label>
+        Sort by
+        <select id="sort-by">
+          <option value="asi">ASI ID</option>
+          <option value="mode1" selected>Mode 1 score</option>
+          <option value="candidate">Candidate score</option>
+          <option value="class">Effect class</option>
+        </select>
+      </label>
+      <button id="refresh" type="button">Refresh live scores</button>
+    </section>
+
+    <section id="grid" class="grid" aria-live="polite"></section>
+
+    <section id="detail" class="detail hidden">
+      <button id="close-detail" type="button" class="ghost">Close</button>
+      <h2 id="detail-title"></h2>
+      <div id="detail-body"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Reference scenarios are synthetic fixtures for format and calculation demonstration — not real incidents.
+      Candidate scores and timeline overlays are <strong>experimental-uncalibrated</strong>.
+      BOD outcomes use CERT/CC SSVC decision table
+      <code>cisa:DT_BOD2604:1.0.0</code> (Householder et al., 2019; CISA, 2026).
+    </p>
+  </footer>
+
+  <script src="/web/app.js"></script>
+</body>
+</html>

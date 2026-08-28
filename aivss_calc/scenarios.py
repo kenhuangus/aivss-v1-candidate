@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from .ai_metrics import (
+    AGENTIC_METRIC_ORDER,
+    AGENTIC_METRICS,
+    classify_sr,
+    parse_aivss_vector,
+)
 from .taxonomy import ASI_TOP_10
+from .versions import CALCULATOR_VERSION
 
 SCENARIOS: list[dict[str, Any]] = [
     {
@@ -12,8 +19,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI01",
         "title": "Direct prompt injection hijacks planning agent goals",
         "summary": "Attacker-supplied instructions override the agent's intended goals via a language-mediated control path.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P/LC:D/CP:S/AP:C/SR:R/EX:M/TD:M",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:D/CP:S/AP:C/SR:R/EX:M/PT:M/CA:M/TD:M",
         "publicly_exposed": True,
+        "automatable": True,
+        "technical_impact": "total",
         "evidence": {"poc": True},
     },
     {
@@ -21,8 +31,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI02",
         "title": "Agent misuses legitimate tool for unauthorized data export",
         "summary": "A compromised or misled agent invokes an authorized tool outside its intended scope.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:N/SC:H/SI:N/SA:N/E:P/LC:I/CP:N/AP:C/SR:R/EX:M/TD:L",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:N/SC:H/SI:N/SA:N/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:I/CP:N/AP:C/SR:R/EX:M/PT:M/CA:M/TD:L",
         "publicly_exposed": True,
+        "automatable": True,
+        "technical_impact": "total",
         "evidence": {"poc": True},
     },
     {
@@ -30,8 +43,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI03",
         "title": "Stolen service credential used for lateral agent actions",
         "summary": "Abuse of agent identity or privileges to act on resources beyond the attacker's direct reach.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:H/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H/E:P/LC:M/CP:N/AP:L/SR:R/EX:M/TD:L",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:H/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:M/CP:N/AP:L/SR:R/EX:M/PT:M/CA:N/TD:L",
         "publicly_exposed": False,
+        "automatable": True,
+        "technical_impact": "total",
         "evidence": {"observed_local": True},
     },
     {
@@ -39,8 +55,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI04",
         "title": "Compromised MCP plugin supplies malicious tool definitions",
         "summary": "Untrusted supply-chain component alters agent capabilities or tool schemas at runtime.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P/LC:I/CP:N/AP:L/SR:P/EX:W/TD:M",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:I/CP:N/AP:L/SR:P/EX:W/PT:H/CA:M/TD:M",
         "publicly_exposed": True,
+        "automatable": False,
+        "technical_impact": "total",
         "evidence": {"poc": True},
     },
     {
@@ -48,8 +67,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI05",
         "title": "Code interpreter executes attacker-supplied shell commands",
         "summary": "Agent reaches a code-execution path and runs attacker-controlled instructions.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N/E:P/LC:D/CP:N/AP:N/SR:R/EX:M/TD:L",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:D/CP:N/AP:N/SR:R/EX:M/PT:M/CA:W/TD:L",
         "publicly_exposed": True,
+        "automatable": True,
+        "technical_impact": "total",
         "evidence": {"poc": True},
     },
     {
@@ -57,8 +79,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI06",
         "title": "Adversarial content in agent memory biases later sessions",
         "summary": "Poisoned context persists across sessions and influences future agent decisions.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P/LC:D/CP:C/AP:L/SR:R/EX:W/TD:H",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H",
         "publicly_exposed": True,
+        "automatable": True,
+        "technical_impact": "total",
         "evidence": {"poc": True},
     },
     {
@@ -66,8 +91,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI07",
         "title": "Unsigned agent-to-agent messages allow instruction relay",
         "summary": "Inter-agent messages lack authentication, enabling cross-agent propagation of malicious intent.",
-        "cvss_vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:N/UI:N/VC:L/VI:H/VA:N/SC:H/SI:L/SA:N/E:P/LC:I/CP:S/AP:L/SR:R/EX:W/TD:M",
+        "cvss_vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:N/UI:N/VC:L/VI:H/VA:N/SC:H/SI:L/SA:N/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:I/CP:S/AP:L/SR:R/EX:W/PT:H/CA:M/TD:M",
         "publicly_exposed": False,
+        "automatable": True,
+        "technical_impact": "total",
         "evidence": {"poc": True},
     },
     {
@@ -75,8 +103,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI08",
         "title": "Faulty planner triggers cascading downstream task failures",
         "summary": "A single agent fault propagates through orchestration to many dependent workflows.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:H/VA:H/SC:H/SI:H/SA:L/E:P/LC:I/CP:S/AP:L/SR:P/EX:W/TD:H",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:H/VA:H/SC:H/SI:H/SA:L/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:I/CP:S/AP:L/SR:P/EX:W/PT:M/CA:W/TD:H",
         "publicly_exposed": True,
+        "automatable": False,
+        "technical_impact": "total",
         "evidence": {"poc": True},
     },
     {
@@ -84,8 +115,11 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI09",
         "title": "Social engineering of human approver via forged agent summaries",
         "summary": "Attacker exploits human trust in agent-generated summaries to obtain unauthorized approvals.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:L/VI:H/VA:N/SC:H/SI:N/SA:N/E:P/LC:D/CP:N/AP:C/SR:P/EX:N/TD:H",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:L/VI:H/VA:N/SC:H/SI:N/SA:N/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:D/CP:N/AP:C/SR:P/EX:N/PT:L/CA:N/TD:H",
         "publicly_exposed": True,
+        "automatable": False,
+        "technical_impact": "partial",
         "evidence": {"poc": True},
     },
     {
@@ -93,17 +127,14 @@ SCENARIOS: list[dict[str, Any]] = [
         "risk_category": "ASI10",
         "title": "Compromised worker agent operates outside policy envelope",
         "summary": "A rogue or hijacked agent continues autonomous operation beyond defined policy bounds.",
-        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H/E:P/LC:D/CP:C/AP:L/SR:R/EX:W/TD:H",
+        "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H/E:P",
+        "aivss_vector": "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:W/TD:H",
         "publicly_exposed": True,
+        "automatable": True,
+        "technical_impact": "total",
         "evidence": {"observed_local": True},
     },
 ]
-
-DEFAULT_ORG_CONTEXT = {
-    "business_criticality": "high",
-    "reach": "high",
-    "likelihood": 0.65,
-}
 
 
 def scenario_by_id(asi_id: str) -> dict[str, Any]:
@@ -114,19 +145,184 @@ def scenario_by_id(asi_id: str) -> dict[str, Any]:
     raise KeyError(f"No reference scenario for {asi_id!r}")
 
 
-def scenario_payload(asi_id: str, *, tool_version: str = "1.0.0") -> dict[str, Any]:
-    """Full assessment input JSON for one OWASP ASI category."""
+def scenario_payload(
+    asi_id: str, *, tool_version: str = CALCULATOR_VERSION
+) -> dict[str, Any]:
+    """Full synthetic assessment input for one OWASP ASI category."""
     scenario = scenario_by_id(asi_id)
+    profile = parse_aivss_vector(scenario["aivss_vector"])
+    metric_evidence = {}
+    for name in AGENTIC_METRIC_ORDER:
+        value = getattr(profile, name.lower())
+        if name == "SR" and value == "R":
+            detail = (
+                "A production-equivalent fixture records 30 successful "
+                "independent episodes out of 30, each from clean state with the "
+                "hard production budget of three attempts for one stable principal; "
+                "the one-sided 95% Wilson lower bound is 0.917."
+            )
+        elif name == "SR" and value == "P":
+            detail = (
+                "A production-equivalent fixture records 18 successful "
+                "independent episodes out of 30, each from clean state with the "
+                "hard production budget of three attempts for one stable principal; "
+                "one-sided 95% Wilson bounds are 0.451 and 0.733."
+            )
+        elif name == "PT" and value == "H":
+            detail = (
+                "Runtime routing can select an unapproved provider and unpinned "
+                "model, so no enforceable provider/model identifier or artifact "
+                "integrity claim exists for this path."
+            )
+        elif name == "PT" and value == "M":
+            detail = (
+                "Synthetic provider ref-provider and deployment model-ref-v1 are "
+                "fixed under config-ref-v1 and changes are auditable, but provider-"
+                "side artifact contents cannot be verified at runtime."
+            )
+        elif name == "PT" and value == "L":
+            detail = (
+                "Synthetic provider ref-provider, model-ref-v1, and config-ref-v1 "
+                "are enforced; artifact digest sha256:synthetic is verified and "
+                "changes require recorded authorization."
+            )
+        elif name == "CA" and value == "W":
+            detail = (
+                "No finite hard aggregate pre-execution ceiling exists for all "
+                "attacker-reachable billable resources."
+            )
+        elif name == "CA" and value == "M":
+            detail = (
+                "A finite hard request ceiling is enforced, but its aggregate "
+                "coverage across a stable principal and tenant is incomplete."
+            )
+        elif name == "CA" and value == "N":
+            detail = (
+                "Tested fail-closed principal and tenant ceilings bound tokens, paid "
+                "calls, queued work, fan-out, retries, and concurrency."
+            )
+        elif name == "TD" and value == "H":
+            detail = (
+                "A retrieval test cannot reconstruct ordered actions or bound "
+                "affected principals."
+            )
+        elif name == "TD" and value == "M":
+            detail = (
+                "A retrieval test reconstructs ordered actions and principals but "
+                "finds missing "
+                "integrity or retention evidence."
+            )
+        elif name == "TD" and value == "L":
+            detail = (
+                "A retrieval exercise verifies all required correlated, "
+                "integrity-protected, and retained records."
+            )
+        else:
+            detail = AGENTIC_METRICS[name][value][1]
+        record: dict[str, Any] = {
+            "rationale": (
+                f"Synthetic reference fact for {scenario['finding_id']}: {detail}"
+            ),
+            "evidence_refs": [
+                f"fixture://{scenario['finding_id']}/{name.lower()}"
+            ],
+        }
+        if name == "SR":
+            if value in {"R", "P", "U"}:
+                successes = {"R": 30, "P": 18, "U": 0}[value]
+                result = classify_sr(
+                    successes=successes,
+                    episodes=30,
+                    production_equivalent=True,
+                    budget_enforced=True,
+                    independent=True,
+                )
+                record.update(
+                    {
+                        "method": "empirical",
+                        "successes": successes,
+                        "episodes": 30,
+                        "retry_budget": 3,
+                        "production_equivalent": True,
+                        "budget_enforced": True,
+                        "independent": True,
+                        "lower_bound": result.lower_bound,
+                        "upper_bound": result.upper_bound,
+                    }
+                )
+            else:
+                record["method"] = "insufficient-evidence"
+        elif name == "CA":
+            observations = {
+                "W": (False, False, False, False),
+                "M": (True, False, True, False),
+                "N": (True, True, True, False),
+                "X": (None, None, None, None),
+            }[value]
+            record.update(
+                dict(
+                    zip(
+                        (
+                            "ceiling_defined",
+                            "coverage_complete",
+                            "fail_closed",
+                            "bypass_demonstrated",
+                        ),
+                        observations,
+                        strict=True,
+                    )
+                )
+            )
+        elif name == "TD":
+            observations = {
+                "H": (True, False, False, False, False, False),
+                "M": (True, True, True, False, False, False),
+                "L": (True, True, True, True, True, True),
+                "X": (False, None, None, None, None, None),
+            }[value]
+            record.update(
+                dict(
+                    zip(
+                        (
+                            "retrieval_tested",
+                            "ordered_actions_reconstructable",
+                            "affected_principals_bounded",
+                            "required_fields_complete",
+                            "integrity_protected",
+                            "retention_verified",
+                        ),
+                        observations,
+                        strict=True,
+                    )
+                )
+            )
+        metric_evidence[name] = record
     return {
         **scenario,
+        "path_id": f"{scenario['finding_id']}-PATH-1",
+        "agentic_applicability": {
+            "model_directed_goal_pursuit": True,
+            "action_selection_or_sequencing": True,
+            "rationale": (
+                "The synthetic fixture uses a model to pursue a delegated goal and "
+                "select or sequence actions that affect its environment."
+            ),
+            "evidence_refs": [
+                f"fixture://{scenario['finding_id']}/agentic-applicability"
+            ],
+        },
+        "publicly_exposed_source": "synthetic deployment inventory fixture",
+        "decision_data_observed_at": "2026-08-27T00:00:00Z",
+        "metric_evidence": metric_evidence,
         "include_decision": True,
-        "include_priority": True,
-        "org_context": dict(DEFAULT_ORG_CONTEXT),
+        "include_priority": False,
+        "include_experimental_mode2": False,
         "provenance": {
-            "assessor": "aivss-calc",
-            "assessor_kind": "human",
+            "assessor": "synthetic-reference-fixture",
+            "assessor_kind": "imported",
             "tool": "aivss-calc",
             "tool_version": tool_version,
+            "assessed_at": "2026-08-27T00:00:00Z",
         },
     }
 

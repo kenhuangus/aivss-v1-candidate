@@ -1,24 +1,104 @@
 {
-  "include_decision": true,
-  "include_priority": true,
-  "org_context": {
-    "business_criticality": "high",
-    "reach": "high",
-    "likelihood": 0.65
-  },
-  "provenance": {
-    "assessor": "aivss-calc examples",
-    "assessor_kind": "human",
-    "tool": "aivss-calc",
-    "tool_version": "1.1.0",
-    "assessed_at": "2026-08-27"
-  },
   "finding_id": "AIVSS-ASI10-001",
   "risk_category": "ASI10",
   "title": "Compromised worker agent operates outside policy envelope",
-  "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H/E:P/LC:D/CP:C/AP:L/SR:R/EX:W/TD:H",
+  "summary": "A rogue or hijacked agent continues autonomous operation beyond defined policy bounds.",
+  "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H/E:P",
+  "aivss_vector": "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:W/TD:H",
   "publicly_exposed": true,
+  "automatable": true,
+  "technical_impact": "total",
   "evidence": {
     "observed_local": true
+  },
+  "path_id": "AIVSS-ASI10-001-PATH-1",
+  "agentic_applicability": {
+    "model_directed_goal_pursuit": true,
+    "action_selection_or_sequencing": true,
+    "rationale": "The synthetic fixture uses a model to pursue a delegated goal and select or sequence actions that affect its environment.",
+    "evidence_refs": [
+      "fixture://AIVSS-ASI10-001/agentic-applicability"
+    ]
+  },
+  "publicly_exposed_source": "synthetic deployment inventory fixture",
+  "decision_data_observed_at": "2026-08-27T00:00:00Z",
+  "metric_evidence": {
+    "LC": {
+      "rationale": "Synthetic reference fact for AIVSS-ASI10-001: Attacker-supplied natural language reaches a privileged decision or tool-invocation path without mediation.",
+      "evidence_refs": [
+        "fixture://AIVSS-ASI10-001/lc"
+      ]
+    },
+    "CP": {
+      "rationale": "Synthetic reference fact for AIVSS-ASI10-001: Attacker-controlled context or memory persists in durable stores \u2014 vector databases, long-term agent memory, episodic memory banks, RAG indexes, user profiles, or training/fine-tuning data \u2014 and remains reachable after the originating session ends.",
+      "evidence_refs": [
+        "fixture://AIVSS-ASI10-001/cp"
+      ]
+    },
+    "AP": {
+      "rationale": "Synthetic reference fact for AIVSS-ASI10-001: Compromised intent, instructions, memory, or authority crosses a trust boundary to other agents, other tenants, or downstream systems.",
+      "evidence_refs": [
+        "fixture://AIVSS-ASI10-001/ap"
+      ]
+    },
+    "SR": {
+      "rationale": "Synthetic reference fact for AIVSS-ASI10-001: A production-equivalent fixture records 30 successful independent episodes out of 30, each from clean state with the hard production budget of three attempts for one stable principal; the one-sided 95% Wilson lower bound is 0.917.",
+      "evidence_refs": [
+        "fixture://AIVSS-ASI10-001/sr"
+      ],
+      "method": "empirical",
+      "successes": 30,
+      "episodes": 30,
+      "retry_budget": 3,
+      "production_equivalent": true,
+      "budget_enforced": true,
+      "independent": true,
+      "lower_bound": 0.9172621864014352,
+      "upper_bound": 1.0
+    },
+    "EX": {
+      "rationale": "Synthetic reference fact for AIVSS-ASI10-001: A reachable extension is dynamic or unvetted, or its identity, callable operations, arguments, credentials, or authority are not independently constrained for the assessed deployment.",
+      "evidence_refs": [
+        "fixture://AIVSS-ASI10-001/ex"
+      ]
+    },
+    "PT": {
+      "rationale": "Synthetic reference fact for AIVSS-ASI10-001: Runtime routing can select an unapproved provider and unpinned model, so no enforceable provider/model identifier or artifact integrity claim exists for this path.",
+      "evidence_refs": [
+        "fixture://AIVSS-ASI10-001/pt"
+      ]
+    },
+    "CA": {
+      "rationale": "Synthetic reference fact for AIVSS-ASI10-001: No finite hard aggregate pre-execution ceiling exists for all attacker-reachable billable resources.",
+      "evidence_refs": [
+        "fixture://AIVSS-ASI10-001/ca"
+      ],
+      "ceiling_defined": false,
+      "coverage_complete": false,
+      "fail_closed": false,
+      "bypass_demonstrated": false
+    },
+    "TD": {
+      "rationale": "Synthetic reference fact for AIVSS-ASI10-001: A retrieval test cannot reconstruct ordered actions or bound affected principals.",
+      "evidence_refs": [
+        "fixture://AIVSS-ASI10-001/td"
+      ],
+      "retrieval_tested": true,
+      "ordered_actions_reconstructable": false,
+      "affected_principals_bounded": false,
+      "required_fields_complete": false,
+      "integrity_protected": false,
+      "retention_verified": false
+    }
+  },
+  "include_decision": true,
+  "include_priority": false,
+  "include_experimental_mode2": false,
+  "provenance": {
+    "assessor": "synthetic-reference-fixture",
+    "assessor_kind": "imported",
+    "tool": "aivss-calc",
+    "tool_version": "2.0.0",
+    "assessed_at": "2026-08-27T00:00:00Z"
   }
 }

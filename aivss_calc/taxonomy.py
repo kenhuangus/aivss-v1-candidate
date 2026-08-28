@@ -1,9 +1,7 @@
 """OWASP Top 10 for Agentic Applications 2026 (ASI01-ASI10).
 
-Canonical risk taxonomy for AIVSS, per Appendix E section 1: "use the existing
-OWASP Agentic AI / LLM Top 10 as the canonical risk taxonomy".
-
-Published 2025-12-09 by the OWASP GenAI Security Project.
+Published December 9, 2025 by the OWASP GenAI Security Project and used as the
+AIVSS finding taxonomy. OWASP does not endorse this AIVSS candidate.
 """
 
 from __future__ import annotations
@@ -23,8 +21,7 @@ ASI_TOP_10: dict[str, str] = {
 
 # Crosswalk from the withdrawn AIVSS v0.8 category list. ASI09 and ASI10 have no
 # v0.8 predecessor. "Agent Untraceability" has no ASI successor in OWASP Top 10;
-# AIVSS retains it as the mandatory TD (Traceability Deficit) risk factor — credit
-# to the OWASP AIVSS project taxonomy.
+# AIVSS represents that concern through the TD (Traceability Deficit) metric.
 V08_CATEGORY_CROSSWALK: dict[str, str | None] = {
     "Agent Goal and Instruction Manipulation": "ASI01",
     "Agentic AI Tool Misuse": "ASI02",
@@ -50,8 +47,7 @@ def normalize_asi(value: str) -> str:
         if mapped is None:
             raise ValueError(
                 f"v0.8 category {candidate!r} has no ASI equivalent. Assess Agent "
-                "Untraceability via the mandatory TD (Traceability Deficit) metric "
-                "(credit: OWASP AIVSS taxonomy)"
+                "Untraceability via the TD (Traceability Deficit) metric"
             )
         return mapped
     raise ValueError(

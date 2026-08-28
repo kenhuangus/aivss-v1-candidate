@@ -1,14 +1,13 @@
-"""AIVSS Part III -- Decision Track, aligned to CISA BOD 26-04.
+"""AIVSS decision support with a separately identified BOD 26-04 result.
 
 BOD 26-04 (June 10, 2026) revoked BOD 22-01 and BOD 19-02 and replaced
 CVSS-severity-driven remediation with a four-variable decision model. CISA
 publishes three of the four variables for every CVE ID through the Vulnrichment
 Program; the fourth (asset exposure) is supplied by the asset owner.
 
-AIVSS does not fork this model. It consumes it verbatim and adds the Agentic
-Effect Class as a fifth, clearly separated decision point. The unmodified BOD timeline
-is always reported alongside the AIVSS recommendation so that an FCEB agency can
-never mistake an AIVSS overlay for its compliance obligation.
+For a CVE, the unmodified BOD result is reported separately from the
+non-binding AIVSS candidate overlay. For a non-CVE finding, the same table may
+be used only as an explicitly labelled analogy and never as a compliance result.
 
 Timeline table transcribed from the CERT/CC SSVC "CISA BOD 26-04 Response Model"
 (cisa:BOD2604:1.0.0), the reference BOD 26-04 itself cites for the Automatable
@@ -17,8 +16,26 @@ and Technical Impact decision point definitions.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from datetime import date, datetime
 from enum import Enum
+
+BOD_2604_MODEL_VERSION = "cisa:BOD2604:1.0.0"
+BOD_2604_DECISION_TABLE_ID = "cisa:DT_BOD2604:1.0.0"
+BOD_2604_MODEL_SOURCE_URL = "https://certcc.github.io/SSVC/howto/cisa_response/"
+BOD_2604_DIRECTIVE_URL = (
+    "https://www.cisa.gov/news-events/directives/"
+    "bod-26-04-prioritizing-security-updates-based-risk"
+)
+SSVC_METHODOLOGY_URL = "https://certcc.github.io/SSVC/"
+SSVC_DECISION_POINTS: dict[str, str] = {
+    "in_kev": "cisa:KEV:1.0.0",
+    "publicly_exposed": "cisa:PE:1.0.0",
+    "automatable": "ssvc:A:2.0.0",
+    "technical_impact": "ssvc:TI:1.0.0",
+    "agentic_ai_effect_class": "aivss:effect_class:1.0.0",
+}
 
 TIMELINE_LABELS: dict[str, str] = {
     "FSU": "Fix on system upgrade",
@@ -59,17 +76,18 @@ BOD_2604_TABLE: dict[tuple[bool, bool, bool, str], str] = {
 class Exploitation(str, Enum):
     """Exploitation state, resolved by the evidence ladder."""
 
-    ACTIVE = "active"
-    ACTIVE_UNVERIFIED = "active_unverified"
+    KNOWN_EXPLOITED = "known_exploited"
+    ACTIVE_REPORTED = "active_reported"
+    ACTIVE_OBSERVED_LOCAL = "active_observed_local"
     POC = "poc"
-    NONE = "none"
+    NONE = "no_evidence_supplied"
 
 
 # Strict precedence, highest authority first. Replaces the withdrawn
 # max(ThM_discrete, ThM_EPSS, ThM_KEV) construction: no transforms, no invented
 # probabilities, and no rung that lets a weaker source override a stronger one.
 EVIDENCE_LADDER: tuple[tuple[str, str], ...] = (
-    ("cisa_kev", "CVE listed in the CISA KEV catalog (authoritative)"),
+    ("cisa_kev", "CVE is listed in the CISA KEV catalog (authoritative)"),
     ("vulnrichment_active", "CISA Vulnrichment reports Exploitation: active"),
     (
         "observed_local",
@@ -77,7 +95,7 @@ EVIDENCE_LADDER: tuple[tuple[str, str], ...] = (
         "(non-CVE agentic finding; not CISA-verified)",
     ),
     ("poc", "Public or private proof-of-concept exists"),
-    ("none", "No factual exploitation evidence"),
+    ("none", "No affirmative exploitation evidence was supplied"),
 )
 
 
@@ -85,7 +103,7 @@ EVIDENCE_LADDER: tuple[tuple[str, str], ...] = (
 class ExploitationEvidence:
     """Inputs to the exploitation evidence ladder."""
 
-    cisa_kev: bool = False
+    cisa_kev: bool | None = None
     vulnrichment_active: bool = False
     epss: float | None = None
     epss_date: str | None = None
@@ -93,14 +111,29 @@ class ExploitationEvidence:
     poc: bool = False
 
     def __post_init__(self) -> None:
+        if self.cisa_kev is not None and type(self.cisa_kev) is not bool:
+            raise ValueError("cisa_kev must be true, false, or omitted")
+        for name in ("vulnrichment_active", "observed_local", "poc"):
+            if type(getattr(self, name)) is not bool:
+                raise ValueError(f"{name} must be true or false")
         if self.epss is not None:
+            if isinstance(self.epss, bool) or not isinstance(self.epss, (int, float)):
+                raise ValueError("epss must be a number in [0.0, 1.0] or omitted")
             if not 0.0 <= self.epss <= 1.0:
                 raise ValueError(f"epss must be in [0.0, 1.0]; got {self.epss}")
-            if not self.epss_date:
+            if not isinstance(self.epss_date, str) or not self.epss_date:
                 raise ValueError(
                     "epss_date is required whenever epss is supplied: EPSS is revised "
                     "daily and an undated score is not reproducible"
                 )
+            try:
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", self.epss_date):
+                    raise ValueError
+                date.fromisoformat(self.epss_date)
+            except ValueError as exc:
+                raise ValueError("epss_date must use YYYY-MM-DD format") from exc
+        elif self.epss_date is not None:
+            raise ValueError("epss_date must be omitted when epss is omitted")
 
     def resolve(self) -> dict[str, object]:
         """Walk the factual exploitation ladder.
@@ -109,12 +142,12 @@ class ExploitationEvidence:
         state: it is a calibrated forecast, not a factual exploitation signal, and
         must not outrank documented local observation.
         """
-        if self.cisa_kev:
-            rung, state = "cisa_kev", Exploitation.ACTIVE
+        if self.cisa_kev is True:
+            rung, state = "cisa_kev", Exploitation.KNOWN_EXPLOITED
         elif self.vulnrichment_active:
-            rung, state = "vulnrichment_active", Exploitation.ACTIVE
+            rung, state = "vulnrichment_active", Exploitation.ACTIVE_REPORTED
         elif self.observed_local:
-            rung, state = "observed_local", Exploitation.ACTIVE_UNVERIFIED
+            rung, state = "observed_local", Exploitation.ACTIVE_OBSERVED_LOCAL
         elif self.poc:
             rung, state = "poc", Exploitation.POC
         else:
@@ -138,18 +171,35 @@ def bod_timeline(
     technical_impact: str,
 ) -> str:
     """Return the BOD 26-04 Table 1 remediation timeline key."""
+    for name, value in (
+        ("in_kev", in_kev),
+        ("publicly_exposed", publicly_exposed),
+        ("automatable", automatable),
+    ):
+        if type(value) is not bool:
+            raise ValueError(f"{name} must be true or false")
+    if not isinstance(technical_impact, str):
+        raise ValueError("technical_impact must be 'partial' or 'total'")
     impact = technical_impact.strip().lower()
     if impact not in ("partial", "total"):
         raise ValueError(
             f"technical_impact must be 'partial' or 'total'; got {technical_impact!r}"
         )
-    return BOD_2604_TABLE[(bool(in_kev), bool(publicly_exposed), bool(automatable), impact)]
+    return BOD_2604_TABLE[
+        (bool(in_kev), bool(publicly_exposed), bool(automatable), impact)
+    ]
 
 
 def advance_timeline(timeline: str, steps: int = 1) -> str:
-    """Move a timeline toward 3D by ``steps`` tiers (never into 3DF)."""
+    """Move toward 3D without adding or removing a forensic-triage duty."""
+    if timeline not in TIMELINE_URGENCY:
+        raise ValueError(f"unknown timeline {timeline!r}")
+    if type(steps) is not int:
+        raise ValueError("steps must be an integer")
     if steps <= 0:
         return timeline
+    if timeline == "3DF":
+        return "3DF"
     index = TIMELINE_URGENCY.index(timeline)
     ceiling = TIMELINE_URGENCY.index("3D")
     return TIMELINE_URGENCY[min(index + steps, ceiling)]
@@ -162,6 +212,8 @@ def escalate(timeline: str, agentic_effect_class: str) -> str:
     triage obligation is a CISA determination tied to KEV listing, not something
     a third-party framework may impose.
     """
+    if agentic_effect_class not in ("A0", "A1", "A2", "AX"):
+        raise ValueError("agentic_effect_class must be A0, A1, A2, or AX")
     return advance_timeline(timeline, 1) if agentic_effect_class == "A2" else timeline
 
 
@@ -169,52 +221,148 @@ def decide(
     *,
     evidence: ExploitationEvidence,
     publicly_exposed: bool,
+    publicly_exposed_source: str,
+    decision_data_observed_at: str,
     agentic_effect_class: str = "A0",
     td: str | None = None,
     automatable: bool | None = None,
     technical_impact: str | None = None,
-    sr: str | None = None,
-    cvss_metrics: dict[str, str] | None = None,
     cve_id: str | None = None,
+    fceb_bod_2604_scope: bool = False,
     vulnrichment_automatable: bool | None = None,
     vulnrichment_technical_impact: str | None = None,
 ) -> dict[str, object]:
-    """Run the five-point decision model.
+    """Run BOD decision support plus the non-binding AIVSS candidate overlay.
 
-    BOD 26-04 defaults (automatable=no, technical_impact=total) apply to CVEs
-    lacking Vulnrichment metadata. SR and CVSS derivations apply only to findings
-    with no CVE and no published Vulnrichment record.
+    BOD defaults apply only to CVEs. Non-CVE findings require explicit analogy
+    inputs; AIVSS never derives BOD decision points from SR or CVSS.
     """
     resolved = evidence.resolve()
 
+    if cve_id is not None and not isinstance(cve_id, str):
+        raise ValueError("cve_id must be a string or omitted")
     has_cve = bool(cve_id and cve_id.strip())
+    normalized_cve = cve_id.strip().upper() if has_cve else None
+    if normalized_cve and not re.fullmatch(r"CVE-\d{4}-\d{4,}", normalized_cve):
+        raise ValueError(f"cve_id must use CVE-YYYY-NNNN format; got {cve_id!r}")
+    if type(publicly_exposed) is not bool:
+        raise ValueError("publicly_exposed must be true or false")
+    if (
+        not isinstance(publicly_exposed_source, str)
+        or not publicly_exposed_source.strip()
+    ):
+        raise ValueError("publicly_exposed_source must be a non-empty string")
+    if (
+        not isinstance(decision_data_observed_at, str)
+        or not re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
+            r"(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})",
+            decision_data_observed_at,
+        )
+    ):
+        raise ValueError("decision_data_observed_at must be an RFC 3339 timestamp")
+    try:
+        observed_at = datetime.fromisoformat(
+            decision_data_observed_at.replace("Z", "+00:00")
+        )
+    except ValueError as exc:
+        raise ValueError(
+            "decision_data_observed_at must be an RFC 3339 timestamp"
+        ) from exc
+    if observed_at.tzinfo is None:
+        raise ValueError("decision_data_observed_at must include a UTC offset")
+    if type(fceb_bod_2604_scope) is not bool:
+        raise ValueError("fceb_bod_2604_scope must be true or false")
+    for name, value in (
+        ("automatable", automatable),
+        ("vulnrichment_automatable", vulnrichment_automatable),
+    ):
+        if value is not None and type(value) is not bool:
+            raise ValueError(f"{name} must be true, false, or omitted")
+    for name, value in (
+        ("technical_impact", technical_impact),
+        ("vulnrichment_technical_impact", vulnrichment_technical_impact),
+    ):
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f"{name} must be partial, total, or omitted")
     has_vulnrichment = (
-        vulnrichment_automatable is not None or vulnrichment_technical_impact is not None
+        vulnrichment_automatable is not None
+        or vulnrichment_technical_impact is not None
     )
-    use_agentic_derivation = not has_cve and not has_vulnrichment and not evidence.cisa_kev
+    if (
+        evidence.cisa_kev or evidence.vulnrichment_active or evidence.epss is not None
+    ) and not has_cve:
+        raise ValueError("cve_id is required for KEV, Vulnrichment, or EPSS evidence")
+    if fceb_bod_2604_scope and not has_cve:
+        raise ValueError("cve_id is required for an FCEB BOD 26-04 compliance result")
+    if has_cve and evidence.cisa_kev is None:
+        raise ValueError("cisa_kev must be explicitly true or false for a CVE decision")
+    if has_vulnrichment and not has_cve:
+        raise ValueError("CISA Vulnrichment values require cve_id")
+    if evidence.cisa_kev is True and (
+        vulnrichment_automatable is None
+        or vulnrichment_technical_impact is None
+    ):
+        raise ValueError(
+            "KEV-listed CVEs require CISA Vulnrichment Automatable and "
+            "Technical Impact values"
+        )
+    if agentic_effect_class not in ("A0", "A1", "A2", "AX"):
+        raise ValueError("agentic_effect_class must be A0, A1, A2, or AX")
+    if td not in ("H", "M", "L", "X", None):
+        raise ValueError("td must be H, M, L, X, or omitted")
+    if (
+        automatable is not None
+        and vulnrichment_automatable is not None
+        and automatable != vulnrichment_automatable
+    ):
+        raise ValueError("supplied automatable conflicts with CISA Vulnrichment")
+    if (
+        technical_impact is not None
+        and vulnrichment_technical_impact is not None
+        and technical_impact.strip().lower()
+        != vulnrichment_technical_impact.strip().lower()
+    ):
+        raise ValueError("supplied technical_impact conflicts with CISA Vulnrichment")
 
-    automatable_source = "supplied"
-    if automatable is None:
-        if vulnrichment_automatable is not None:
-            automatable, automatable_source = vulnrichment_automatable, "CISA Vulnrichment"
-        elif use_agentic_derivation and sr is not None:
-            automatable, automatable_source = sr == "R", "derived from SR (non-CVE finding)"
-        else:
-            automatable, automatable_source = False, "BOD 26-04 default (no)"
-
-    impact_source = "supplied"
-    if technical_impact is None:
-        if vulnrichment_technical_impact is not None:
-            technical_impact = vulnrichment_technical_impact.strip().lower()
-            impact_source = "CISA Vulnrichment"
-        elif use_agentic_derivation and cvss_metrics:
-            high = any(cvss_metrics.get(m) == "H" for m in ("VC", "VI", "VA"))
-            technical_impact = "total" if high else "partial"
-            impact_source = "derived from CVSS VC/VI/VA (non-CVE finding)"
-        else:
-            technical_impact, impact_source = "total", "BOD 26-04 default (total)"
+    if vulnrichment_automatable is not None:
+        automatable = vulnrichment_automatable
+        automatable_source = "CISA Vulnrichment"
+    elif automatable is not None:
+        automatable_source = "supplied"
+    elif has_cve and not evidence.cisa_kev:
+        automatable = False
+        automatable_source = "BOD 26-04 default (no)"
+    elif has_cve:
+        raise ValueError(
+            "automatable is required for a KEV-listed CVE; CISA publishes "
+            "Vulnrichment data for every KEV entry"
+        )
     else:
+        raise ValueError(
+            "automatable is required for a non-CVE BOD-table analogy; "
+            "it is not derived from SR"
+        )
+
+    if vulnrichment_technical_impact is not None:
+        technical_impact = vulnrichment_technical_impact.strip().lower()
+        impact_source = "CISA Vulnrichment"
+    elif technical_impact is not None:
         technical_impact = technical_impact.strip().lower()
+        impact_source = "supplied"
+    elif has_cve and not evidence.cisa_kev:
+        technical_impact = "total"
+        impact_source = "BOD 26-04 default (total)"
+    elif has_cve:
+        raise ValueError(
+            "technical_impact is required for a KEV-listed CVE; CISA publishes "
+            "Vulnrichment data for every KEV entry"
+        )
+    else:
+        raise ValueError(
+            "technical_impact is required for a non-CVE BOD-table analogy; "
+            "it is not derived from CVSS"
+        )
 
     base = bod_timeline(
         in_kev=bool(evidence.cisa_kev),
@@ -222,14 +370,57 @@ def decide(
         automatable=bool(automatable),
         technical_impact=technical_impact,
     )
-    escalation_steps = (1 if agentic_effect_class == "A2" else 0) + (1 if td == "H" else 0)
-    recommended = advance_timeline(base, escalation_steps)
+    if agentic_effect_class == "AX" or td == "X":
+        overlay_triggered = None
+        recommended = None
+        overlay_status = "incomplete"
+    elif td is None:
+        overlay_triggered = None
+        recommended = None
+        overlay_status = "not-assessed"
+    else:
+        # v1.0 SSVC extension: Agentic AI Effect Class A2 advances one outcome
+        # tier. Traceability (TA/TD) is mandatory metadata — not an overlay input.
+        overlay_triggered = agentic_effect_class == "A2"
+        recommended = advance_timeline(base, 1 if overlay_triggered else 0)
+        overlay_status = "experimental-uncalibrated"
 
-    return {
+    compliance_applicable = has_cve and fceb_bod_2604_scope
+    if compliance_applicable:
+        decision_basis = "cisa_bod_26_04"
+    elif has_cve:
+        decision_basis = "informative_bod_26_04_cve_guidance"
+    else:
+        decision_basis = "informative_bod_26_04_analogy"
+
+    result: dict[str, object] = {
         "exploitation": resolved,
+        "cve_id": normalized_cve,
+        "fceb_bod_2604_scope": fceb_bod_2604_scope,
+        "ssvc": {
+            "methodology": "Stakeholder-Specific Vulnerability Categorization (SSVC)",
+            "methodology_url": SSVC_METHODOLOGY_URL,
+            "decision_table": BOD_2604_DECISION_TABLE_ID,
+            "outcome_namespace": BOD_2604_MODEL_VERSION,
+            "decision_table_source": BOD_2604_MODEL_SOURCE_URL,
+            "decision_point_namespaces": dict(SSVC_DECISION_POINTS),
+            "extension_note": (
+                "Agentic AI Effect Class is a transparent fifth SSVC extension "
+                "input; TA (Traceability Avoidance) is recorded but does not "
+                "modify the BOD outcome."
+            ),
+        },
+        "bod_2604_model_version": BOD_2604_MODEL_VERSION,
+        "bod_2604_decision_table": BOD_2604_DECISION_TABLE_ID,
+        "bod_2604_model_source": BOD_2604_MODEL_SOURCE_URL,
+        "bod_2604_directive": BOD_2604_DIRECTIVE_URL,
+        "decision_basis": decision_basis,
+        "compliance_applicable": compliance_applicable,
         "decision_points": {
             "in_kev": bool(evidence.cisa_kev),
             "publicly_exposed": bool(publicly_exposed),
+            "publicly_exposed_source": publicly_exposed_source.strip(),
+            "decision_data_observed_at": decision_data_observed_at,
             "automatable": bool(automatable),
             "automatable_source": automatable_source,
             "technical_impact": technical_impact,
@@ -237,15 +428,52 @@ def decide(
             "agentic_effect_class": agentic_effect_class,
             "td": td,
         },
-        "bod_2604_timeline": base,
-        "bod_2604_label": TIMELINE_LABELS[base],
         "aivss_recommended_timeline": recommended,
-        "aivss_recommended_label": TIMELINE_LABELS[recommended],
-        "escalated": recommended != base,
-        "note": (
-            "bod_2604_timeline is the unmodified BOD 26-04 Table 1 result and is the "
-            "operative value for FCEB compliance. aivss_recommended_timeline is a "
-            "non-binding organizational overlay. TD:H may advance the overlay by one "
-            "additional tier because scope of compromise cannot be bounded."
+        "aivss_recommended_label": TIMELINE_LABELS[recommended]
+        if recommended
+        else None,
+        "overlay_triggered": overlay_triggered,
+        "escalated": recommended != base if recommended else None,
+        "aivss_recommended_forensic_triage_indicated": (
+            base == "3DF" if recommended else None
         ),
+        "overlay_status": overlay_status,
     }
+    if compliance_applicable:
+        result.update(
+            {
+                "bod_2604_timeline": base,
+                "bod_2604_label": TIMELINE_LABELS[base],
+                "forensic_triage_required": base == "3DF",
+                "note": (
+                    "bod_2604_timeline is the unmodified compliance result. "
+                    "The AIVSS recommendation is a separate, non-binding candidate overlay."
+                ),
+            }
+        )
+    elif has_cve:
+        result.update(
+            {
+                "bod_2604_guidance_timeline": base,
+                "bod_2604_guidance_label": TIMELINE_LABELS[base],
+                "forensic_triage_indicated": base == "3DF",
+                "note": (
+                    "This CVE-based result uses the BOD 26-04 decision table as "
+                    "informative guidance. It is not a compliance deadline because "
+                    "FCEB BOD scope was not asserted."
+                ),
+            }
+        )
+    else:
+        result.update(
+            {
+                "bod_2604_analogy_timeline": base,
+                "bod_2604_analogy_label": TIMELINE_LABELS[base],
+                "forensic_triage_indicated": base == "3DF",
+                "note": (
+                    "This non-CVE result is an informative analogy, not a BOD 26-04 "
+                    "compliance deadline. Inputs were supplied explicitly."
+                ),
+            }
+        )
+    return result

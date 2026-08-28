@@ -1,22 +1,10 @@
-"""Optional Level 3 organizational priority index (AIVSS-P).
+"""Optional, organization-local, uncalibrated priority experiment.
 
-Organization-internal and non-portable. AIVSS-P orders work within one
-portfolio; it is not comparable across organizations and must not be published
-outside the assessing organization.
-
-Rebuilt from the withdrawn v0.9 Track P, which had three defects:
-
-* It multiplied a Threat Multiplier term that was already inside the severity
-  input, and business criticality and control strength each appeared twice.
-  Here every quantity is priced exactly once, and exploitation is priced
-  nowhere -- that belongs to the Decision Track.
-* Multiplying five sub-unit terms pushed 88% of plausible inputs into the
-  bottom band, so a Critical finding with median context returned "Track". A
-  geometric mean over the terms restores the dynamic range while preserving
-  ordering.
-* It required sixteen OWASP Risk Rating factors per finding. Likelihood is now
-  a single organization-supplied value; organizations should derive it with
-  their existing methodology (NIST SP 800-30 Rev. 1 or equivalent).
+AIVSS-P is non-portable and must not be used as a standard risk score. Its
+likelihood input must be an organization's documented residual likelihood for
+the assessed deployment. Because that estimate can overlap CVSS Threat,
+Agentic AI reliability, or exposure evidence, adopters must define and test a
+local de-duplication policy before operational use.
 """
 
 from __future__ import annotations
@@ -45,11 +33,15 @@ def compute_priority(
     """AIVSS-P = 100 x geometric_mean(S/10, BI, REACH, L).
 
     Terms, each pricing one quantity exactly once:
-      S/10   technical severity, from CVSS-BTE or AIVSS-BTEA
+      S/10   the explicitly selected technical-severity input
       BI     business criticality of the affected asset
       REACH  deployment reach
-      L      organization-assessed likelihood
+      L      organization-defined residual likelihood after de-duplication
     """
+    if isinstance(severity, bool) or not isinstance(severity, (int, float)):
+        raise ValueError("severity must be a number in [0.0, 10.0]")
+    if isinstance(likelihood, bool) or not isinstance(likelihood, (int, float)):
+        raise ValueError("likelihood must be a number in [0.0, 1.0]")
     if not 0.0 <= severity <= 10.0:
         raise ValueError(f"severity must be in [0.0, 10.0]; got {severity}")
     if not 0.0 <= likelihood <= 1.0:
@@ -76,6 +68,7 @@ def compute_priority(
         "band": priority_band(score),
         "terms": {k: round(v, 4) for k, v in terms.items()},
         "scope": "organization-internal; not comparable across organizations",
+        "status": "organization-local-uncalibrated",
     }
 
 

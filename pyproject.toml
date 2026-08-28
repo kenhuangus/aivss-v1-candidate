@@ -1,13 +1,13 @@
 [project]
 name = "aivss-calc"
-version = "1.0.1"
-description = "AIVSS v1.0 reference calculator: CVSS-compatible AI scoring with a CISA BOD 26-04 decision track"
+version = "2.0.0"
+description = "AIVSS 2.0 candidate calculator with a separate Agentic AI profile"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["cvss>=3.6"]
+dependencies = ["cvss>=3.6,<4", "jsonschema>=4,<5"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "jsonschema>=4"]
+dev = ["pytest>=7,<9", "ruff>=0.12,<1", "build>=1,<2"]
 
 [project.scripts]
 aivss-calc = "aivss_calc.cli:main"
@@ -22,6 +22,13 @@ include = ["aivss_calc*"]
 
 [tool.setuptools.package-data]
 aivss_calc = ["data/*.json"]
+
+[tool.setuptools.data-files]
+"share/aivss/schemas" = [
+  "schemas/aivss-assessment-input-v2.0.json",
+  "schemas/aivss-report-v2.0.json",
+]
+"share/doc/aivss-calc" = ["THIRD_PARTY_NOTICES.md", "aivss-extension.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

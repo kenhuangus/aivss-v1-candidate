@@ -1,61 +1,54 @@
-# CVSS v4.0 vs Agentic AI Metrics
+# CVSS v4.0 and AIVSS Boundaries
 
-AIVSS is CVSS-compatible: the CVSS vector is scored first; Agentic AI metrics extend it. This document explains what CVSS already captures, what AIVSS adds, and what remains out of scope for v1.0.
+AIVSS uses the
+[CVSS v4.0 Extensions Framework](https://www.first.org/cvss/v4.0/user-guide).
+The CVSS vector and AIVSS extension vector are listed separately:
 
-## What CVSS covers (score honestly in CVSS)
+```text
+CVSS:4.0/AV:.../SA:...
+AIVSS:2.0/LC:.../CP:.../AP:.../SR:.../EX:.../PT:.../CA:.../TD:...
+```
 
-| Concern | CVSS home | Notes |
-|---------|-----------|-------|
-| Downstream system impact from tool reach | **SC / SI / SA** | Subsequent-system confidentiality, integrity, availability |
-| Vulnerable-system impact | **VC / VI / VA** | Direct harm to the agent host or primary asset |
-| Attack vector and prerequisites | **AV / AC / AT / PR / UI** | Network path, complexity, auth, user interaction |
-| Agent credential scope | **PR** (Privileges Required) | Service account vs user vs none |
-| Human-in-the-loop vs autonomous action | **UI** (User Interaction) | Whether a human must approve or trigger |
-| Exploit maturity | **E** (Threat metric) | PoC, active, etc. |
+AIVSS does not add metrics to a CVSS metric group or change CVSS definitions,
+formulas, constants, ordering, or scores.
 
-Assessors must not double-count downstream impact: if a tool can exfiltrate customer data, that belongs in **SC/SI**, not as a separate AIVSS uplift on top of an already-high SC.
+## Separation rules
 
-## What CVSS does not name (AIVSS adds)
+| AIVSS metric | Related CVSS or CISA concept | Boundary |
+|---|---|---|
+| LC | CVSS UI | UI records required human participation. LC records how attacker-controlled language reaches security-relevant agent logic. |
+| CP | No direct CVSS equivalent | CP records behavioral persistence of attacker-controlled context or memory, not data-retention policy in general. |
+| AP | CVSS SC/SI/SA | AP records whether intent, authority, or state propagates across a trust boundary. SC/SI/SA record the resulting impact to subsequent systems. |
+| SR | CVSS AC/E; CISA Automatable | SR records confidence-bounded exploit reliability under the full enforced attacker budget. AC records attack complexity, E records exploit maturity, and Automatable asks whether all exploitation steps can be automated. None may be inferred from another. |
+| EX | CVSS AV/AT and SC/SI/SA | EX records whether reachable extension identity, operations, arguments, credentials, and authorization are independently constrained. CVSS records access, prerequisites, and realized impact. |
+| PT | CVSS PR/AT | PT records model and inference supply-chain provenance. PR records attacker privileges; AT records deployment prerequisites. |
+| CA | CVSS VA/SA | CA records whether enforced resource ceilings contain token, API, compute, or workflow expenditure. VA/SA record realized availability impact. |
+| TD | No direct CVSS equivalent | TD records whether the exploit sequence can be reconstructed from retained, correlated evidence. |
 
-| Concern | Partially in CVSS? | AIVSS home | Why separate |
-|---------|-------------------|------------|--------------|
-| Extension type and surface (tools, MCP, plugins, skills, workflows) | **No** | **EX** | CVSS has no metric for *which extension mechanisms* exist on the path; SC/SI/SA only describe impact if invoked |
-| Post-incident traceability of agent reasoning and tool calls | **No** | **TD** | Operational risk when scope cannot be bounded |
-| Language-mediated control path | **No** | **LC** | Prompt/injection reach to privileged behaviour |
-| Cross-session context persistence | **No** | **CP** | Memory, RAG, training-data carryover |
-| Cross-boundary agent propagation | Partially **AP** via SC scope | **AP** | Trust-boundary crossing between agents/tenants |
-| Stochastic exploit reliability under retry | Partially **AC** | **SR** | Agent non-determinism and retry economics |
+## Double-counting controls
 
-ASI02 (tool misuse) and ASI04 (supply chain / untrusted extensions) are **taxonomy categories** for reporting, not numeric metrics. **EX** is the scored factor for extension surface on the attack path.
+1. CVSS records realized technical impact. AIVSS metrics record path properties;
+   do not increase CVSS impact values merely because an AIVSS value is severe.
+2. EX, PT, CA, and TD do not participate in Agentic Effect Class. This keeps
+   their experimental additive contribution from also triggering MacroVector
+   promotion.
+3. The decision track never derives CISA Automatable from SR or Technical
+   Impact from CVSS impact metrics.
+4. Each report covers one coherent exploit path. Combining metric maxima from
+   unrelated paths can create a profile that no attacker can realize.
+5. Actual resource exhaustion may justify CVSS VA/SA impact while weak resource
+   ceilings justify CA. Record evidence for both; they answer different
+   questions, but the uncalibrated numeric adjustment must still be interpreted
+   as experimental.
 
-## Agentic Effect Class vs numeric factors
+## Scope limits
 
-| Mechanism | Affects Agentic Effect Class | Affects numeric AIVSS |
-|-----------|------------------------------|------------------------|
-| LC, CP, AP, SR | Yes (boolean ladder) | No (Mode 1); yes via Mode 2 promotion |
-| EX:W with LC∈{D,I} | Yes (A2 rule) | Yes (EX_delta) |
-| EX (all values) | Only EX:W + LC rule | Yes (EX_delta) |
-| TD (all values) | No | Yes (TD_delta); TD:H also advances overlay |
+The eight metrics are not a claim to cover all AI, safety, privacy, legal, or
+business risk. They describe the Agentic AI exploit-path properties selected
+for this candidate. Examples outside the profile include model bias, general
+accuracy, regulatory jurisdiction, business criticality, safety cases,
+training-data governance unrelated to the path, and portfolio-level risk
+appetite.
 
-## Known gaps (not in CVSS or AIVSS v1.0 numeric model)
-
-| Concern | Status in v1.0 |
-|---------|----------------|
-| Model/provider trust and provenance | ASI04 classification only; no numeric factor |
-| Multi-agent orchestration depth | Partially **AP** + **EX:W** when workflows span agents |
-| Cost / rate-limit / token abuse | Out of scope for v1.0 severity |
-| Self-modification and training-time attacks | ASI categories; no dedicated metric |
-| Regulatory / privacy jurisdiction | Organizational context (AIVSS-P), not base score |
-
-These may be addressed in future rubric versions after calibration.
-
-## Worked separation example
-
-An agent with an MCP server that can call `delete_user` on a production API:
-
-1. Set **SC/SI/SA** to reflect harm if the tool succeeds.
-2. Set **EX:M** or **EX:W** depending on whether only that MCP bundle exists or many dynamic extensions are loadable.
-3. Set **LC** for how attacker language reaches the tool-invocation path.
-4. Set **TD** for whether tool calls and reasoning traces are auditable after an incident.
-
-Do not inflate CVSS-BTE for “has tools” and also set **EX:W** without justification — EX measures the *exploitation-path* extension surface, not generic product marketing feature lists.
+OWASP ASI categories classify finding type. They are not score multipliers.
+Organization context belongs outside portable technical severity.

@@ -1,4 +1,4 @@
-"""Conformance and regression tests for the AIVSS v1.0 reference calculator.
+"""Conformance and regression tests for the AIVSS 2.0 candidate calculator.
 
 Assertions are exact. A scoring standard whose own tests carry wide tolerances
 cannot arbitrate between two implementations that disagree.
@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import pathlib
+from decimal import Decimal, ROUND_HALF_UP
+from itertools import product
 
 import pytest
 
@@ -19,35 +21,159 @@ from aivss_calc import (
     OrgContext,
     Provenance,
     assess,
+    assessment_from_payload,
     bod_timeline,
     compute_priority,
     lookup_aivss,
     macrovector,
     macrovector_score,
     normalize_asi,
+    parse_aivss_vector,
     parse_cvss_vector,
     promote,
     split_ai_vector,
 )
-from aivss_calc.ai_metrics import apply_agentic_risk, ex_risk_delta, td_risk_delta, agentic_risk_delta
+from aivss_calc.ai_metrics import (
+    AGENTIC_METRIC_ORDER,
+    AGENTIC_METRICS,
+    ADJUSTMENT_AGENTIC_METRICS,
+    CLASSIFYING_AGENTIC_METRICS,
+    agentic_risk_delta,
+    apply_agentic_risk,
+    candidate_adjustment,
+    ca_risk_delta,
+    classify_sr,
+    ex_risk_delta,
+    pt_risk_delta,
+    td_risk_delta,
+)
 from aivss_calc.decision import TIMELINE_URGENCY, advance_timeline, decide, escalate
 from aivss_calc.legacy import compute_severity, factor_mean, score_legacy
 from aivss_calc.cvss_score import round_half_up, score_cvss_bte
 from aivss_calc.macrovector import _lookup_table
 from aivss_calc.taxonomy import ASI_TOP_10, V08_CATEGORY_CROSSWALK
+from aivss_calc.validation import validate_assessment_input, validate_report
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
-SCHEMA = REPO / "schemas" / "aivss-report-v1.0.json"
+SCHEMA = REPO / "schemas" / "aivss-report-v2.0.json"
 
 # CVSS-BTE 7.8 (interpolated), MacroVector ceiling 8.0.
 EXAMPLE_VECTOR = "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P"
 EXAMPLE_CVSS_BTE = 7.8
 EXAMPLE_EX_DELTA = 0.4
+EXAMPLE_PT_DELTA = 0.3
+EXAMPLE_CA_DELTA = 0.1
 EXAMPLE_TD_DELTA = 0.5
-EXAMPLE_AGENTIC_RISK_DELTA = 0.9
-EXAMPLE_AIVSS = 8.7
-EXAMPLE_AI = "LC:D/CP:C/AP:L/SR:R/EX:W/TD:H"
-EXAMPLE_FULL = f"{EXAMPLE_VECTOR}/{EXAMPLE_AI}"
+EXAMPLE_AGENTIC_RISK_DELTA = 1.3
+EXAMPLE_AIVSS = 9.1
+EXAMPLE_AI = "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
+EXAMPLE_FULL = f"{EXAMPLE_VECTOR} {EXAMPLE_AI}"
+DECISION_CONTEXT = {
+    "publicly_exposed_source": "test fixture",
+    "decision_data_observed_at": "2026-08-27T00:00:00Z",
+}
+APPLICABILITY = {
+    "model_directed_goal_pursuit": True,
+    "action_selection_or_sequencing": True,
+    "rationale": "Test fixture exercises an agentic path.",
+    "evidence_refs": ["test://agentic-applicability"],
+}
+
+
+def metric_evidence(vector: str) -> dict[str, dict]:
+    assessed = parse_aivss_vector(vector)
+    result = {
+        name: {
+            "rationale": f"Test evidence for {name}",
+            "evidence_refs": [f"test://{name.lower()}"],
+        }
+        for name in AGENTIC_METRIC_ORDER
+    }
+    successes = {"R": 30, "P": 18, "U": 0}.get(assessed.sr)
+    if successes is None:
+        result["SR"]["method"] = "insufficient-evidence"
+    else:
+        classified = classify_sr(
+            successes=successes,
+            episodes=30,
+            production_equivalent=True,
+            budget_enforced=True,
+            independent=True,
+        )
+        result["SR"].update(
+            {
+                "method": "empirical",
+                "successes": successes,
+                "episodes": 30,
+                "retry_budget": 3,
+                "production_equivalent": True,
+                "budget_enforced": True,
+                "independent": True,
+                "lower_bound": classified.lower_bound,
+                "upper_bound": classified.upper_bound,
+            }
+        )
+    ca = {
+        "W": (False, False, False, False),
+        "M": (True, False, True, False),
+        "N": (True, True, True, False),
+        "X": (None, None, None, None),
+    }[assessed.ca]
+    result["CA"].update(
+        dict(
+            zip(
+                (
+                    "ceiling_defined",
+                    "coverage_complete",
+                    "fail_closed",
+                    "bypass_demonstrated",
+                ),
+                ca,
+                strict=True,
+            )
+        )
+    )
+    td = {
+        "H": (True, False, False, False, False, False),
+        "M": (True, True, True, False, False, False),
+        "L": (True, True, True, True, True, True),
+        "X": (False, None, None, None, None, None),
+    }[assessed.td]
+    result["TD"].update(
+        dict(
+            zip(
+                (
+                    "retrieval_tested",
+                    "ordered_actions_reconstructable",
+                    "affected_principals_bounded",
+                    "required_fields_complete",
+                    "integrity_protected",
+                    "retention_verified",
+                ),
+                td,
+                strict=True,
+            )
+        )
+    )
+    return result
+
+
+METRIC_EVIDENCE = metric_evidence(EXAMPLE_AI)
+
+
+def profile(**overrides: str) -> AIProfile:
+    values = {
+        "lc": "N",
+        "cp": "N",
+        "ap": "N",
+        "sr": "U",
+        "ex": "N",
+        "pt": "L",
+        "ca": "N",
+        "td": "L",
+    }
+    values.update(overrides)
+    return AIProfile(**values)
 
 
 class TestMacroVectorTable:
@@ -62,7 +188,7 @@ class TestMacroVectorTable:
 
 
 class TestIdentityRule:
-    """Appendix E section 5.2: Lookup_AIVSS(EQ1..EQ6, A0) == CVSS-BTE."""
+    """The experimental MacroVector mapping preserves A0 identity."""
 
     def test_identity_holds_for_every_macrovector(self):
         table = _lookup_table()
@@ -78,19 +204,52 @@ class TestIdentityRule:
         assert result["delta"] == 0.0
 
     def test_agentic_risk_delta_adjusts_score(self):
-        """EX and TD are mandatory and adjust the published AIVSS score."""
+        """EX, PT, CA, and TD feed the transparent candidate adjustment."""
         metrics = parse_cvss_vector(EXAMPLE_VECTOR)
         base = lookup_aivss(EXAMPLE_VECTOR, metrics, "A0")["aivss_btea"]
-        for ex, ex_delta in (("W", 0.4), ("M", 0.15), ("N", 0.0)):
-            for td, td_delta in (("H", 0.5), ("M", 0.2), ("L", 0.0)):
-                profile = AIProfile(ex=ex, td=td, scored_present=False)
-                assert profile.effect_class() == "A0"
-                assert ex_risk_delta(ex) == ex_delta
-                assert td_risk_delta(td) == td_delta
-                assert agentic_risk_delta(ex=ex, td=td) == ex_delta + td_delta
-                assert apply_agentic_risk(base, ex=ex, td=td) == round_half_up(
-                    min(10.0, base + ex_delta + td_delta), 1
+        cases = (
+            ("W", "H", "W", "H", 1.5),
+            ("M", "M", "M", "M", 0.55),
+            ("N", "L", "N", "L", 0.0),
+        )
+        for ex, pt, ca, td, total in cases:
+            ai = profile(ex=ex, pt=pt, ca=ca, td=td)
+            assert ai.effect_class() == "A0"
+            assert agentic_risk_delta(ex=ex, pt=pt, ca=ca, td=td) == total
+            assert apply_agentic_risk(
+                base, ex=ex, pt=pt, ca=ca, td=td
+            ) == round_half_up(min(10.0, base + total), 1)
+
+    def test_adjustment_rounding_is_exact_for_every_score_and_factor_combination(self):
+        tables = [
+            ("W", "M", "N"),
+            ("H", "M", "L"),
+            ("W", "M", "N"),
+            ("H", "M", "L"),
+        ]
+        for tenth in range(101):
+            base = Decimal(tenth) / Decimal(10)
+            for ex, pt, ca, td in product(*tables):
+                expected_delta = sum(
+                    (
+                        Decimal(str(ex_risk_delta(ex))),
+                        Decimal(str(pt_risk_delta(pt))),
+                        Decimal(str(ca_risk_delta(ca))),
+                        Decimal(str(td_risk_delta(td))),
+                    ),
+                    Decimal("0"),
                 )
+                raw = Decimal("0") if base == 0 else base + expected_delta
+                expected = min(Decimal("10"), raw).quantize(
+                    Decimal("0.1"), rounding=ROUND_HALF_UP
+                )
+                actual = candidate_adjustment(float(base), ex=ex, pt=pt, ca=ca, td=td)
+                assert Decimal(str(actual.value)) == expected
+                assert Decimal(str(actual.raw_value)) == raw
+
+    def test_candidate_score_rejects_non_numeric_input(self):
+        with pytest.raises(ValueError, match="finite decimal"):
+            candidate_adjustment("7.8", ex="N", pt="L", ca="N", td="L")
 
     def test_interpolated_score_differs_from_macrovector_ceiling(self):
         metrics = parse_cvss_vector(EXAMPLE_VECTOR)
@@ -119,7 +278,9 @@ class TestPromotion:
             )
 
     def test_promotion_is_bounded_by_ten(self):
-        assert all(macrovector_score(promote(mv, "A2")) <= 10.0 for mv in _lookup_table())
+        assert all(
+            macrovector_score(promote(mv, "A2")) <= 10.0 for mv in _lookup_table()
+        )
 
     def test_unknown_class_rejected(self):
         with pytest.raises(ValueError, match="Unknown Agentic Effect Class"):
@@ -127,9 +288,9 @@ class TestPromotion:
 
 
 class TestAIEffectClass:
-    def test_appendix_e_worked_example(self):
-        """Appendix E section 9.2 asserts LC:D and CP:C imply A2."""
-        assert AIProfile(lc="D", cp="C", ap="N", sr="U").effect_class() == "A2"
+    def test_direct_cross_session_case(self):
+        """Direct control plus cross-session persistence classifies as A2."""
+        assert profile(lc="D", cp="C").effect_class() == "A2"
 
     @pytest.mark.parametrize(
         "kwargs",
@@ -141,24 +302,29 @@ class TestAIEffectClass:
         ],
     )
     def test_a2_conditions(self, kwargs):
-        assert AIProfile(**kwargs).effect_class() == "A2"
+        assert profile(**kwargs).effect_class() == "A2"
+
+    def test_adjustment_metrics_do_not_promote_effect_class(self):
+        assert profile(lc="I", ex="W").effect_class() == "A1"
+        assert profile(pt="H", ex="M").effect_class() == "A0"
+        assert profile(sr="R", ca="W").effect_class() == "A1"
 
     @pytest.mark.parametrize(
         "kwargs",
         [{"lc": "I"}, {"cp": "S"}, {"ap": "C"}, {"sr": "R"}, {"lc": "M"}],
     )
     def test_a1_conditions(self, kwargs):
-        assert AIProfile(**kwargs).effect_class() == "A1"
+        assert profile(**kwargs).effect_class() == "A1"
 
     def test_a0_only_when_all_benign(self):
-        assert AIProfile(lc="N", cp="N", ap="N", sr="U").effect_class() == "A0"
+        assert profile().effect_class() == "A0"
 
     def test_every_combination_yields_a_valid_class(self):
         for lc in "DIMN":
             for cp in "CSN":
                 for ap in "LCN":
                     for sr in "RPU":
-                        cls = AIProfile(lc=lc, cp=cp, ap=ap, sr=sr).effect_class()
+                        cls = profile(lc=lc, cp=cp, ap=ap, sr=sr).effect_class()
                         assert cls in ("A0", "A1", "A2")
 
     def test_class_is_monotone_in_each_metric(self):
@@ -175,48 +341,145 @@ class TestAIEffectClass:
                                 lo = dict(base, **{name: scale[i]})
                                 hi = dict(base, **{name: scale[i + 1]})
                                 assert (
-                                    order[AIProfile(**hi).effect_class()]
-                                    >= order[AIProfile(**lo).effect_class()]
+                                    order[profile(**hi).effect_class()]
+                                    >= order[profile(**lo).effect_class()]
                                 )
 
     def test_illegal_value_rejected(self):
         with pytest.raises(ValueError, match="Illegal value"):
-            AIProfile(lc="Z")
+            profile(lc="Z")
+
+    def test_unknown_classifying_metric_yields_ax(self):
+        assert profile(lc="X").effect_class() == "AX"
+        assert profile(lc="X").complete is False
+
+
+class TestSRClassification:
+    def test_empirical_thresholds_are_reproducible(self):
+        controls = {
+            "production_equivalent": True,
+            "budget_enforced": True,
+            "independent": True,
+        }
+        reliable = classify_sr(successes=30, episodes=30, **controls)
+        probabilistic = classify_sr(successes=18, episodes=30, **controls)
+        unreliable = classify_sr(successes=0, episodes=30, **controls)
+        assert reliable.value == "R"
+        assert reliable.lower_bound == pytest.approx(0.917, abs=0.001)
+        assert probabilistic.value == "P"
+        assert unreliable.value == "U"
+        assert unreliable.upper_bound == pytest.approx(0.083, abs=0.001)
+
+    def test_insufficient_controls_or_sample_yield_unknown(self):
+        assert classify_sr(successes=29, episodes=29).value == "X"
+        assert (
+            classify_sr(
+                successes=30,
+                episodes=30,
+                production_equivalent=True,
+                budget_enforced=True,
+                independent=False,
+            ).value
+            == "X"
+        )
+
+    def test_deterministic_proof_overrides_empirical_inputs(self):
+        assert classify_sr(deterministic_outcome="success").value == "R"
+        assert classify_sr(deterministic_outcome="failure").value == "U"
+
+
+class TestMetricPartitions:
+    """Eight metrics with closed value sets — every code must be assignable."""
+
+    EXPECTED_COUNTS = {
+        "LC": 5,
+        "CP": 4,
+        "AP": 4,
+        "SR": 4,
+        "EX": 4,
+        "PT": 4,
+        "CA": 4,
+        "TD": 4,
+    }
+
+    def test_eight_metrics_in_fixed_order(self):
+        assert AGENTIC_METRIC_ORDER == ("LC", "CP", "AP", "SR", "EX", "PT", "CA", "TD")
+
+    def test_classifying_and_adjustment_partition_the_eight(self):
+        assert set(CLASSIFYING_AGENTIC_METRICS) | set(
+            ADJUSTMENT_AGENTIC_METRICS
+        ) == set(AGENTIC_METRIC_ORDER)
+        assert set(CLASSIFYING_AGENTIC_METRICS).isdisjoint(ADJUSTMENT_AGENTIC_METRICS)
+
+    @pytest.mark.parametrize("name,count", list(EXPECTED_COUNTS.items()))
+    def test_value_set_size(self, name, count):
+        assert len(AGENTIC_METRICS[name]) == count
+
+    def test_every_adjustment_value_parses_in_profile(self):
+        for ex in AGENTIC_METRICS["EX"]:
+            for pt in AGENTIC_METRICS["PT"]:
+                for ca in AGENTIC_METRICS["CA"]:
+                    for td in AGENTIC_METRICS["TD"]:
+                        ai = profile(ex=ex, pt=pt, ca=ca, td=td)
+                        assert ai.complete == ("X" not in (ex, pt, ca, td))
 
 
 class TestVectorParsing:
     def test_round_trip(self):
-        cvss, profile = split_ai_vector(f"{EXAMPLE_VECTOR}/{EXAMPLE_AI}")
+        cvss, parsed = split_ai_vector(EXAMPLE_FULL)
         assert cvss == EXAMPLE_VECTOR
-        assert profile is not None
-        assert profile.to_vector_fragment() == EXAMPLE_AI
+        assert parsed is not None
+        assert parsed.to_vector() == EXAMPLE_AI
 
     def test_no_ai_group_returns_none(self):
-        cvss, profile = split_ai_vector(EXAMPLE_VECTOR)
+        cvss, parsed = split_ai_vector(EXAMPLE_VECTOR)
         assert cvss == EXAMPLE_VECTOR
-        assert profile is None
+        assert parsed is None
 
     def test_partial_ai_group_rejected(self):
-        with pytest.raises(ValueError, match="all four scored metrics"):
-            split_ai_vector(f"{EXAMPLE_VECTOR}/LC:D/CP:C")
+        with pytest.raises(ValueError, match="all eight"):
+            parse_aivss_vector("AIVSS:2.0/LC:D/CP:C")
 
-    def test_scored_ai_group_without_mandatory_rejected(self):
-        with pytest.raises(ValueError, match="EX"):
+    def test_appended_ai_metrics_are_rejected(self):
+        with pytest.raises(ValueError, match="separate"):
             split_ai_vector(f"{EXAMPLE_VECTOR}/LC:D/CP:C/AP:L/SR:R")
 
     def test_duplicate_ai_metric_rejected(self):
-        with pytest.raises(ValueError, match="Duplicate AI metric"):
-            split_ai_vector(f"{EXAMPLE_VECTOR}/LC:D/LC:I/CP:C/AP:L/SR:R")
+        with pytest.raises(ValueError, match="Duplicate AIVSS metric"):
+            parse_aivss_vector("AIVSS:2.0/LC:D/LC:I/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H")
+
+    def test_wrong_extension_version_rejected(self):
+        with pytest.raises(ValueError, match="must begin"):
+            parse_aivss_vector(EXAMPLE_AI.replace("AIVSS:2.0", "AIVSS:1.2"))
 
     @pytest.mark.parametrize(
         "vector,match",
         [
             ("CVSS:3.1/AV:N", "must begin with"),
-            ("CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N/ZZ:Q", "Unknown"),
-            ("CVSS:4.0/AV:Q/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N", "Illegal value"),
-            ("CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N", "Missing mandatory"),
-            ("CVSS:4.0/AV:N/AV:A/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N", "Duplicate"),
-            ("CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA", "Malformed"),
+            (
+                "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N/ZZ:Q",
+                "Unknown",
+            ),
+            (
+                "CVSS:4.0/AV:Q/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+                "Illegal value",
+            ),
+            (
+                "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N",
+                "Missing mandatory",
+            ),
+            (
+                "CVSS:4.0/AV:N/AV:A/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+                "Duplicate",
+            ),
+            (
+                "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA",
+                "Malformed",
+            ),
+            (
+                "CVSS:4.0/AC:L/AV:N/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+                "order",
+            ),
         ],
     )
     def test_malformed_vectors_rejected(self, vector, match):
@@ -235,15 +498,36 @@ class TestVectorParsing:
 
 
 class TestBOD2604:
-    def test_all_sixteen_rows_present(self):
-        assert len(BOD_2604_TABLE) == 16
+    def test_all_sixteen_official_rows_match(self):
+        expected = {
+            (False, False, False, "partial"): "FSU",
+            (True, False, False, "partial"): "14D",
+            (False, True, False, "partial"): "60D",
+            (False, False, True, "partial"): "60D",
+            (False, False, False, "total"): "FSU",
+            (True, True, False, "partial"): "14D",
+            (True, False, True, "partial"): "14D",
+            (False, True, True, "partial"): "14D",
+            (True, False, False, "total"): "14D",
+            (False, True, False, "total"): "14D",
+            (False, False, True, "total"): "60D",
+            (True, True, True, "partial"): "3D",
+            (True, True, False, "total"): "3DF",
+            (True, False, True, "total"): "3DF",
+            (False, True, True, "total"): "3D",
+            (True, True, True, "total"): "3DF",
+        }
+        assert BOD_2604_TABLE == expected
 
     def test_kev_plus_total_without_exposure_or_automation_is_14_days(self):
         """Regression: the fast tier needs exposure or automatability, not just
         KEV plus total impact. Hand-written boolean logic gets this wrong."""
         assert (
             bod_timeline(
-                in_kev=True, publicly_exposed=False, automatable=False, technical_impact="total"
+                in_kev=True,
+                publicly_exposed=False,
+                automatable=False,
+                technical_impact="total",
             )
             == "14D"
         )
@@ -277,7 +561,19 @@ class TestBOD2604:
     def test_invalid_technical_impact_rejected(self):
         with pytest.raises(ValueError, match="partial.*total"):
             bod_timeline(
-                in_kev=False, publicly_exposed=False, automatable=False, technical_impact="high"
+                in_kev=False,
+                publicly_exposed=False,
+                automatable=False,
+                technical_impact="high",
+            )
+
+    def test_non_boolean_decision_point_rejected(self):
+        with pytest.raises(ValueError, match="in_kev must be true or false"):
+            bod_timeline(
+                in_kev="no",
+                publicly_exposed=False,
+                automatable=False,
+                technical_impact="partial",
             )
 
     def test_escalation_only_for_a2(self):
@@ -285,29 +581,65 @@ class TestBOD2604:
             assert escalate("60D", cls) == "60D"
         assert escalate("60D", "A2") == "14D"
 
-    def test_escalation_never_reaches_forensic_triage(self):
+    def test_escalation_never_adds_forensic_triage(self):
         """Forensic triage is a CISA determination; AIVSS must not impose it."""
         for timeline in TIMELINE_URGENCY:
             assert escalate(timeline, "A2") != "3DF" or timeline == "3DF"
         assert escalate("3D", "A2") == "3D"
+        assert escalate("3DF", "A2") == "3DF"
 
     def test_escalation_advances_exactly_one_tier(self):
         assert escalate("FSU", "A2") == "60D"
         assert escalate("14D", "A2") == "3D"
 
-    def test_td_high_advances_timeline_one_tier(self):
+    def test_td_high_does_not_escalate_timeline_v1_overlay(self):
+        """v1.0 SSVC overlay: only A2 escalates; TD/TA is metadata only."""
         assert advance_timeline("60D", 1) == "14D"
         result = decide(
             evidence=ExploitationEvidence(),
             publicly_exposed=False,
+            **DECISION_CONTEXT,
             agentic_effect_class="A0",
             td="H",
             automatable=False,
             technical_impact="partial",
         )
-        assert result["bod_2604_timeline"] == "FSU"
+        assert result["bod_2604_analogy_timeline"] == "FSU"
+        assert result["aivss_recommended_timeline"] == "FSU"
+        assert result["overlay_triggered"] is False
+        assert result["escalated"] is False
+
+    def test_a2_escalates_timeline_one_tier(self):
+        result = decide(
+            evidence=ExploitationEvidence(),
+            publicly_exposed=False,
+            **DECISION_CONTEXT,
+            agentic_effect_class="A2",
+            td="H",
+            automatable=False,
+            technical_impact="partial",
+        )
+        assert result["bod_2604_analogy_timeline"] == "FSU"
         assert result["aivss_recommended_timeline"] == "60D"
+        assert result["overlay_triggered"] is True
         assert result["escalated"] is True
+
+    def test_forensic_triage_is_never_removed(self):
+        result = decide(
+            evidence=ExploitationEvidence(cisa_kev=True),
+            cve_id="CVE-2026-12345",
+            fceb_bod_2604_scope=True,
+            publicly_exposed=True,
+            **DECISION_CONTEXT,
+            vulnrichment_automatable=True,
+            vulnrichment_technical_impact="total",
+            agentic_effect_class="A2",
+            td="H",
+        )
+        assert result["bod_2604_timeline"] == "3DF"
+        assert result["aivss_recommended_timeline"] == "3DF"
+        assert result["forensic_triage_required"] is True
+        assert result["aivss_recommended_forensic_triage_indicated"] is True
 
 
 class TestEvidenceLadder:
@@ -319,12 +651,12 @@ class TestEvidenceLadder:
         assert result["authoritative"] is True
 
     def test_precedence_order(self):
-        assert ExploitationEvidence(vulnrichment_active=True, poc=True).resolve()["rung"] == (
-            "vulnrichment_active"
-        )
-        assert ExploitationEvidence(observed_local=True, poc=True).resolve()["rung"] == (
-            "observed_local"
-        )
+        assert ExploitationEvidence(vulnrichment_active=True, poc=True).resolve()[
+            "rung"
+        ] == ("vulnrichment_active")
+        assert ExploitationEvidence(observed_local=True, poc=True).resolve()[
+            "rung"
+        ] == ("observed_local")
         assert ExploitationEvidence(poc=True).resolve()["rung"] == "poc"
         assert ExploitationEvidence().resolve()["rung"] == "none"
 
@@ -340,7 +672,10 @@ class TestEvidenceLadder:
         assert result["rung"] == "observed_local"
 
     def test_locally_observed_is_not_authoritative(self):
-        assert ExploitationEvidence(observed_local=True).resolve()["authoritative"] is False
+        assert (
+            ExploitationEvidence(observed_local=True).resolve()["authoritative"]
+            is False
+        )
 
     def test_epss_requires_an_observation_date(self):
         with pytest.raises(ValueError, match="epss_date is required"):
@@ -348,48 +683,80 @@ class TestEvidenceLadder:
 
     def test_epss_used_as_published(self):
         """No transform: the raw probability is carried through unchanged."""
-        assert ExploitationEvidence(epss=0.42, epss_date="2026-08-27").resolve()["epss"] == 0.42
+        assert (
+            ExploitationEvidence(epss=0.42, epss_date="2026-08-27").resolve()["epss"]
+            == 0.42
+        )
 
     def test_epss_range_validated(self):
         with pytest.raises(ValueError, match=r"\[0.0, 1.0\]"):
             ExploitationEvidence(epss=1.5, epss_date="2026-08-27")
 
-    def test_automatable_derived_from_sr_for_non_cve(self):
-        result = decide(
-            evidence=ExploitationEvidence(),
-            publicly_exposed=True,
-            agentic_effect_class="A0",
-            sr="R",
-            cvss_metrics=parse_cvss_vector(EXAMPLE_VECTOR),
-        )
-        assert result["decision_points"]["automatable"] is True
-        assert result["decision_points"]["automatable_source"] == "derived from SR (non-CVE finding)"
+    def test_epss_date_is_strict_iso_date(self):
+        with pytest.raises(ValueError, match="YYYY-MM-DD"):
+            ExploitationEvidence(epss=0.42, epss_date="20260827")
 
-    def test_automatable_not_derived_from_sr_when_cve_present(self):
+    def test_evidence_flags_are_strict_booleans(self):
+        with pytest.raises(ValueError, match="cisa_kev must be true, false, or omitted"):
+            ExploitationEvidence(cisa_kev="yes")
+
+    def test_non_cve_requires_explicit_analogy_inputs(self):
+        with pytest.raises(ValueError, match="automatable is required"):
+            decide(
+                evidence=ExploitationEvidence(),
+                publicly_exposed=True,
+                **DECISION_CONTEXT,
+                agentic_effect_class="A0",
+            )
+
+    def test_cve_uses_bod_defaults_when_metadata_is_missing(self):
         result = decide(
-            evidence=ExploitationEvidence(),
+            evidence=ExploitationEvidence(cisa_kev=False),
             publicly_exposed=True,
+            **DECISION_CONTEXT,
             agentic_effect_class="A0",
-            sr="R",
             cve_id="CVE-2024-0001",
-            cvss_metrics=parse_cvss_vector(EXAMPLE_VECTOR),
         )
         assert result["decision_points"]["automatable"] is False
-        assert result["decision_points"]["automatable_source"] == "BOD 26-04 default (no)"
+        assert (
+            result["decision_points"]["automatable_source"] == "BOD 26-04 default (no)"
+        )
+        assert result["decision_points"]["technical_impact"] == "total"
+        assert result["compliance_applicable"] is False
+        assert result["decision_basis"] == "informative_bod_26_04_cve_guidance"
 
-    def test_bod_default_when_no_data(self):
-        result = decide(evidence=ExploitationEvidence(), publicly_exposed=False)
-        points = result["decision_points"]
-        assert points["automatable"] is False
-        assert points["technical_impact"] == "total"
+    def test_kev_requires_published_metadata_instead_of_defaults(self):
+        with pytest.raises(ValueError, match="require CISA Vulnrichment"):
+            decide(
+                evidence=ExploitationEvidence(cisa_kev=True),
+                publicly_exposed=True,
+                **DECISION_CONTEXT,
+                cve_id="CVE-2026-12345",
+            )
+
+    def test_non_cve_result_is_never_labelled_compliance(self):
+        result = decide(
+            evidence=ExploitationEvidence(),
+            publicly_exposed=False,
+            **DECISION_CONTEXT,
+            automatable=False,
+            technical_impact="partial",
+        )
+        assert result["decision_basis"] == "informative_bod_26_04_analogy"
+        assert result["compliance_applicable"] is False
+        assert "bod_2604_timeline" not in result
 
     def test_unmodified_bod_timeline_always_reported(self):
         result = decide(
             evidence=ExploitationEvidence(cisa_kev=True),
+            cve_id="CVE-2026-12345",
+            fceb_bod_2604_scope=True,
             publicly_exposed=False,
+            **DECISION_CONTEXT,
             agentic_effect_class="A2",
-            automatable=False,
-            technical_impact="partial",
+            td="M",
+            vulnrichment_automatable=False,
+            vulnrichment_technical_impact="partial",
         )
         assert result["bod_2604_timeline"] == "14D"
         assert result["aivss_recommended_timeline"] == "3D"
@@ -446,7 +813,9 @@ class TestPriority:
         assert compute_priority(severity=6.0, likelihood=0.5)["aivss_p"] > base
         assert compute_priority(severity=5.0, likelihood=0.6)["aivss_p"] > base
         assert (
-            compute_priority(severity=5.0, business_criticality="high", likelihood=0.5)["aivss_p"]
+            compute_priority(severity=5.0, business_criticality="high", likelihood=0.5)[
+                "aivss_p"
+            ]
             > base
         )
 
@@ -463,8 +832,16 @@ class TestLegacyAnnexB:
     ALL_FACTORS = {
         name: 0.5
         for name in (
-            "autonomy", "tools", "language", "context", "non_determinism",
-            "opacity", "persistence", "identity", "multi_agent", "self_mod",
+            "autonomy",
+            "tools",
+            "language",
+            "context",
+            "non_determinism",
+            "opacity",
+            "persistence",
+            "identity",
+            "multi_agent",
+            "self_mod",
         )
     }
 
@@ -503,9 +880,13 @@ class TestLegacyAnnexB:
 
     def test_unknown_enum_values_are_errors(self):
         with pytest.raises(ValueError, match="Unknown threat maturity"):
-            score_legacy(cvss_base=5.0, factors=self.ALL_FACTORS, threat_maturity="typo")
+            score_legacy(
+                cvss_base=5.0, factors=self.ALL_FACTORS, threat_maturity="typo"
+            )
         with pytest.raises(ValueError, match="Unknown mitigation strength"):
-            score_legacy(cvss_base=5.0, factors=self.ALL_FACTORS, mitigation_inherent="storng")
+            score_legacy(
+                cvss_base=5.0, factors=self.ALL_FACTORS, mitigation_inherent="storng"
+            )
 
     def test_cvss_base_precision_validated(self):
         with pytest.raises(ValueError, match="one decimal place"):
@@ -530,52 +911,77 @@ class TestEndToEnd:
     def _assessment(self, **overrides):
         defaults = dict(
             finding_id="AIVSS-EX-001",
-            cvss_vector=EXAMPLE_FULL,
+            path_id="AIVSS-EX-001-PATH-1",
+            cvss_vector=EXAMPLE_VECTOR,
+            aivss_vector=EXAMPLE_AI,
             asi_category="ASI06",
-            ai_profile=AIProfile(lc="D", cp="C", ap="L", sr="R", ex="W", td="H"),
+            agentic_applicability=dict(APPLICABILITY),
+            metric_evidence=dict(METRIC_EVIDENCE),
             evidence=ExploitationEvidence(poc=True),
             publicly_exposed=True,
-            org_context=OrgContext(business_criticality="high", reach="high", likelihood=0.72),
+            publicly_exposed_source="test fixture",
+            decision_data_observed_at="2026-08-27T00:00:00Z",
+            automatable=True,
+            technical_impact="total",
+            org_context=OrgContext(
+                business_criticality="high", reach="high", likelihood=0.72
+            ),
             include_priority=True,
-            provenance=Provenance(assessor="test", tool="aivss-calc", tool_version="1.0.0"),
+            provenance=Provenance(
+                assessor="test",
+                tool="aivss-calc",
+                tool_version="2.0.0",
+                assessed_at="2026-08-27T00:00:00Z",
+            ),
         )
+        if "aivss_vector" in overrides and "metric_evidence" not in overrides:
+            overrides["metric_evidence"] = metric_evidence(overrides["aivss_vector"])
         defaults.update(overrides)
         return assess(Assessment(**defaults))
 
-    def test_mode1_applies_agentic_risk_delta(self):
+    def test_candidate_adjustment_is_transparent(self):
         report = self._assessment()
         assert report["cvss"]["cvss_bte"] == EXAMPLE_CVSS_BTE
-        mode1 = report["scores"]["mode1_interpretation"]
-        assert mode1["ex_delta"] == EXAMPLE_EX_DELTA
-        assert mode1["td_delta"] == EXAMPLE_TD_DELTA
-        assert mode1["agentic_risk_delta"] == EXAMPLE_AGENTIC_RISK_DELTA
-        assert mode1["aivss"] == EXAMPLE_AIVSS
+        candidate = report["scores"]["candidate_adjusted"]
+        assert candidate["ex_delta"] == EXAMPLE_EX_DELTA
+        assert candidate["pt_delta"] == EXAMPLE_PT_DELTA
+        assert candidate["ca_delta"] == EXAMPLE_CA_DELTA
+        assert candidate["td_delta"] == EXAMPLE_TD_DELTA
+        assert candidate["agentic_risk_delta"] == EXAMPLE_AGENTIC_RISK_DELTA
+        assert candidate["aivss"] == EXAMPLE_AIVSS
+        assert candidate["raw_aivss"] == EXAMPLE_AIVSS
 
-    def test_mode2_is_provisional_and_higher(self):
+    def test_macrovector_experiment_is_off_by_default(self):
+        assert "experimental_macrovector" not in self._assessment()["scores"]
+
+    def test_macrovector_experiment_is_explicitly_uncalibrated(self):
+        report = self._assessment(include_experimental_mode2=True)
+        experiment = report["scores"]["experimental_macrovector"]
+        assert experiment["aivss_btea"] == 10.0
+        assert experiment["btea_before_agentic_risk"] == 9.0
+        assert experiment["status"] == "experimental-uncalibrated"
+
+    def test_vectors_are_separate(self):
         report = self._assessment()
-        assert report["scores"]["mode2_macrovector"]["aivss_btea"] == 9.9
-        assert report["scores"]["mode2_macrovector"]["btea_before_agentic_risk"] == 9.0
-        assert report["scores"]["mode2_macrovector"]["status"].startswith("provisional")
+        assert report["cvss"]["vector"] == EXAMPLE_VECTOR
+        assert report["agentic_ai_profile"]["vector"] == EXAMPLE_AI
+        assert "vector" not in report
 
-    def test_vector_carries_ai_group(self):
-        assert self._assessment()["vector"].endswith(EXAMPLE_AI)
-
-    def test_mandatory_only_yields_identity_and_a0(self):
-        mandatory_only = f"{EXAMPLE_VECTOR}/EX:W/TD:H"
-        report = self._assessment(cvss_vector=mandatory_only, ai_profile=None)
-        assert report["agentic_ai_profile"]["present"] is False
+    def test_a0_is_value_based_not_presence_based(self):
+        benign = "AIVSS:2.0/LC:N/CP:N/AP:N/SR:U/EX:W/PT:L/CA:N/TD:H"
+        report = self._assessment(aivss_vector=benign)
         assert report["agentic_ai_profile"]["agentic_effect_class"] == "A0"
-        assert report["scores"]["mode2_macrovector"]["btea_before_agentic_risk"] == EXAMPLE_CVSS_BTE
-        assert report["scores"]["mode2_macrovector"]["aivss_btea"] == EXAMPLE_AIVSS
-        assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_AIVSS
+        assert report["scores"]["candidate_adjusted"]["aivss"] == 8.7
 
-    def test_assess_without_mandatory_rejected(self):
-        with pytest.raises(ValueError, match="EX"):
+    def test_assess_without_profile_rejected(self):
+        with pytest.raises(ValueError, match="eight"):
             assess(
                 Assessment(
                     finding_id="x",
+                    path_id="x-path",
                     cvss_vector=EXAMPLE_VECTOR,
                     asi_category="ASI06",
+                    agentic_applicability=dict(APPLICABILITY),
                     publicly_exposed=True,
                 )
             )
@@ -588,33 +994,24 @@ class TestEndToEnd:
             assess(
                 Assessment(
                     finding_id="x",
-                    cvss_vector=f"{EXAMPLE_VECTOR}/EX:W/TD:H",
+                    path_id="x-path",
+                    cvss_vector=EXAMPLE_VECTOR,
+                    aivss_vector=EXAMPLE_AI,
                     asi_category="ASI06",
+                    agentic_applicability=dict(APPLICABILITY),
+                    metric_evidence=dict(METRIC_EVIDENCE),
                     include_decision=True,
+                    provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
                 )
             )
 
     def test_report_validates_against_schema(self):
-        jsonschema = pytest.importorskip("jsonschema")
-        schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
-        jsonschema.validate(self._assessment(), schema)
+        validate_report(self._assessment())
 
     def test_shipped_example_validates_against_schema(self):
-        jsonschema = pytest.importorskip("jsonschema")
-        example = pathlib.Path(__file__).parents[1] / "examples" / "asi06-memory-poisoning.json"
+        example = pathlib.Path(__file__).parents[1] / "examples" / "asi06-example.json"
         data = json.loads(example.read_text(encoding="utf-8"))
-        report = assess(
-            Assessment(
-                finding_id=data["finding_id"],
-                cvss_vector=data["cvss_vector"],
-                asi_category=data["risk_category"],
-                evidence=ExploitationEvidence(**data["evidence"]),
-                org_context=OrgContext(**data["org_context"]),
-                provenance=Provenance(**data["provenance"]),
-                publicly_exposed=data["publicly_exposed"],
-                include_decision=data.get("include_decision", True),
-                include_priority=data.get("include_priority", False),
-            )
-        )
-        jsonschema.validate(report, json.loads(SCHEMA.read_text(encoding="utf-8")))
-        assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_AIVSS
+        validate_assessment_input(data)
+        report = assess(assessment_from_payload(data))
+        validate_report(report)
+        assert report["scores"]["candidate_adjusted"]["aivss"] == EXAMPLE_AIVSS

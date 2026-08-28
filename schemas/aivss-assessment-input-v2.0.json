@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aivss:candidate:assessment-input:2.0",
+  "title": "AIVSS 2.0 Candidate Assessment Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "finding_id",
+    "path_id",
+    "risk_category",
+    "cvss_vector",
+    "aivss_vector",
+    "agentic_applicability",
+    "metric_evidence",
+    "provenance"
+  ],
+  "properties": {
+    "finding_id": {"type": "string", "minLength": 1},
+    "path_id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "risk_category": {"type": "string", "pattern": "^ASI(0[1-9]|10)$"},
+    "cvss_vector": {
+      "type": "string",
+      "pattern": "^CVSS:4\\.0(?:/(?!LC:|CP:|AP:|SR:|EX:|PT:|CA:|TD:)[A-Z][A-Z0-9]*:[A-Za-z]+)+$"
+    },
+    "aivss_vector": {
+      "type": "string",
+      "pattern": "^AIVSS:2\\.0/LC:(D|I|M|N|X)/CP:(C|S|N|X)/AP:(L|C|N|X)/SR:(R|P|U|X)/EX:(W|M|N|X)/PT:(H|M|L|X)/CA:(W|M|N|X)/TD:(H|M|L|X)$"
+    },
+    "agentic_applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_directed_goal_pursuit",
+        "action_selection_or_sequencing",
+        "rationale",
+        "evidence_refs"
+      ],
+      "properties": {
+        "model_directed_goal_pursuit": {"const": true},
+        "action_selection_or_sequencing": {"const": true},
+        "rationale": {"type": "string", "minLength": 1},
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "metric_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["LC", "CP", "AP", "SR", "EX", "PT", "CA", "TD"],
+      "properties": {
+        "LC": {"$ref": "#/$defs/metricEvidence"},
+        "CP": {"$ref": "#/$defs/metricEvidence"},
+        "AP": {"$ref": "#/$defs/metricEvidence"},
+        "SR": {"$ref": "#/$defs/metricEvidence"},
+        "EX": {"$ref": "#/$defs/metricEvidence"},
+        "PT": {"$ref": "#/$defs/metricEvidence"},
+        "CA": {"$ref": "#/$defs/metricEvidence"},
+        "TD": {"$ref": "#/$defs/metricEvidence"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cisa_kev": {"type": "boolean"},
+        "vulnrichment_active": {"type": "boolean"},
+        "epss": {"type": "number", "minimum": 0, "maximum": 1},
+        "epss_date": {"type": "string", "minLength": 1},
+        "observed_local": {"type": "boolean"},
+        "poc": {"type": "boolean"}
+      },
+      "dependentRequired": {"epss": ["epss_date"]}
+    },
+    "publicly_exposed": {"type": "boolean"},
+    "publicly_exposed_source": {"type": "string", "minLength": 1},
+    "decision_data_observed_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "cve_id": {"type": "string", "pattern": "^CVE-[0-9]{4}-[0-9]{4,}$"},
+    "fceb_bod_2604_scope": {"type": "boolean"},
+    "automatable": {"type": "boolean"},
+    "technical_impact": {"enum": ["partial", "total"]},
+    "vulnrichment_automatable": {"type": "boolean"},
+    "vulnrichment_technical_impact": {"enum": ["partial", "total"]},
+    "include_decision": {"type": "boolean"},
+    "include_priority": {"type": "boolean"},
+    "include_experimental_mode2": {"type": "boolean"},
+    "org_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["business_criticality", "reach", "likelihood"],
+      "properties": {
+        "business_criticality": {"enum": ["high", "medium", "low"]},
+        "reach": {"enum": ["high", "medium", "low"]},
+        "likelihood": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessor_kind", "assessed_at"],
+      "properties": {
+        "assessor": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "null"}
+          ]
+        },
+        "assessor_kind": {"enum": ["human", "scanner", "llm_assisted", "imported"]},
+        "tool": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "null"}
+          ]
+        },
+        "tool_version": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "null"}
+          ]
+        },
+        "assessed_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["include_decision"],
+        "properties": {"include_decision": {"const": false}}
+      },
+      "else": {
+        "required": [
+          "publicly_exposed",
+          "publicly_exposed_source",
+          "decision_data_observed_at"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": ["include_priority"],
+        "properties": {"include_priority": {"const": true}}
+      },
+      "then": {"required": ["org_context"]}
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "required": ["include_decision"],
+            "properties": {"include_decision": {"const": false}}
+          },
+          {"required": ["cve_id"]}
+        ]
+      },
+      "else": {"required": ["automatable", "technical_impact"]}
+    },
+    {
+      "if": {
+        "required": ["fceb_bod_2604_scope"],
+        "properties": {"fceb_bod_2604_scope": {"const": true}}
+      },
+      "then": {"required": ["cve_id"]}
+    },
+    {
+      "if": {
+        "allOf": [
+          {"required": ["cve_id"]},
+          {
+            "not": {
+              "required": ["include_decision"],
+              "properties": {"include_decision": {"const": false}}
+            }
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "evidence": {"required": ["cisa_kev"]}
+        },
+        "required": ["evidence"]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "required": ["evidence"],
+            "properties": {
+              "evidence": {
+                "required": ["cisa_kev"],
+                "properties": {"cisa_kev": {"const": true}}
+              }
+            }
+          },
+          {
+            "not": {
+              "required": ["include_decision"],
+              "properties": {"include_decision": {"const": false}}
+            }
+          }
+        ]
+      },
+      "then": {
+        "required": [
+          "vulnrichment_automatable",
+          "vulnrichment_technical_impact"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "metricEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rationale", "evidence_refs"],
+      "properties": {
+        "rationale": {"type": "string", "minLength": 1},
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "method": {
+          "enum": [
+            "deterministic-proof",
+            "empirical",
+            "insufficient-evidence"
+          ]
+        },
+        "deterministic_outcome": {"enum": ["success", "failure", null]},
+        "successes": {"type": ["integer", "null"], "minimum": 0},
+        "episodes": {"type": ["integer", "null"], "minimum": 1},
+        "retry_budget": {"type": ["integer", "null"], "minimum": 1},
+        "production_equivalent": {"type": ["boolean", "null"]},
+        "budget_enforced": {"type": ["boolean", "null"]},
+        "independent": {"type": ["boolean", "null"]},
+        "lower_bound": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "upper_bound": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ceiling_defined": {"type": ["boolean", "null"]},
+        "coverage_complete": {"type": ["boolean", "null"]},
+        "fail_closed": {"type": ["boolean", "null"]},
+        "bypass_demonstrated": {"type": ["boolean", "null"]},
+        "retrieval_tested": {"type": ["boolean", "null"]},
+        "ordered_actions_reconstructable": {"type": ["boolean", "null"]},
+        "affected_principals_bounded": {"type": ["boolean", "null"]},
+        "required_fields_complete": {"type": ["boolean", "null"]},
+        "integrity_protected": {"type": ["boolean", "null"]},
+        "retention_verified": {"type": ["boolean", "null"]}
+      }
+    }
+  }
+}
