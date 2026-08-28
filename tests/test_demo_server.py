@@ -64,10 +64,18 @@ def test_demo_top10_api():
 
 
 def test_static_build_includes_web_assets():
-    from scripts.build_static_site import build
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "build_static_site",
+        REPO_ROOT / "scripts" / "build_static_site.py",
+    )
+    build_mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(build_mod)
 
     out = REPO_ROOT / "_site_test"
-    build(out)
+    build_mod.build(out)
     try:
         for path in (
             out / "index.html",
