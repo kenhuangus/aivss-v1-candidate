@@ -39,7 +39,7 @@ EVIDENCE = scenario_payload("ASI06")["metric_evidence"]
 def test_versions_are_consistent_across_package_and_schemas():
     project = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
     report_schema = json.loads(
-        (REPO / "schemas" / "aivss-report-v2.0.json").read_text(encoding="utf-8")
+        (REPO / "schemas" / "aivss-report-v1.0.json").read_text(encoding="utf-8")
     )
     manifest = json.loads((REPO / "aivss-extension.json").read_text(encoding="utf-8"))
     assert project["project"]["version"] == CALCULATOR_VERSION
@@ -86,7 +86,7 @@ def test_all_metric_combinations_have_deterministic_completeness_and_class():
 
 
 def test_unknown_value_withholds_candidate_score():
-    vector = "AIVSS:2.0/LC:X/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
+    vector = "AIVSS:1.0/LC:X/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
     report = assess(
         Assessment(
             finding_id="unknown",
@@ -180,7 +180,7 @@ def test_cli_rejects_partial_agentic_flags(capsys):
 
 
 def test_cli_accepts_separate_extension_vector(capsys):
-    vector = "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
+    vector = "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
     assert main(["profile", CVSS, "--aivss-vector", vector]) == 0
     output = json.loads(capsys.readouterr().out)
     assert output["cvss_vector"] == CVSS
@@ -189,7 +189,7 @@ def test_cli_accepts_separate_extension_vector(capsys):
 
 
 def test_lookup_output_separates_macrovector_and_adjustment_deltas(capsys):
-    vector = "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
+    vector = "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
     assert main(["lookup", CVSS, "--aivss-vector", vector]) == 0
     output = json.loads(capsys.readouterr().out)
     assert "delta" not in output
@@ -201,4 +201,4 @@ def test_lookup_output_separates_macrovector_and_adjustment_deltas(capsys):
 
 def test_extension_parser_rejects_out_of_order_metrics():
     with pytest.raises(ValueError, match="out of order"):
-        parse_aivss_vector("AIVSS:2.0/CP:C/LC:D/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H")
+        parse_aivss_vector("AIVSS:1.0/CP:C/LC:D/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H")

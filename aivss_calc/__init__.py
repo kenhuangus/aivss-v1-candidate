@@ -1,4 +1,4 @@
-"""AIVSS 2.0 candidate reference calculator.
+"""AIVSS 1.0 reference calculator.
 
 CVSS severity remains independently reproducible. AIVSS adds a separate
 eight-metric profile and explicitly experimental candidate calculations.

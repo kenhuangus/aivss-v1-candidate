@@ -1,4 +1,4 @@
-# AIVSS 2.0 Candidate
+# AIVSS 1.0
 
 AIVSS is a candidate extension profile for describing vulnerabilities in
 Agentic AI systems. It keeps the official CVSS v4.0 vector and score intact and
@@ -34,7 +34,7 @@ CVSS and AIVSS vectors are separate, following the
 
 ```text
 CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P
-AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H
+AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H
 ```
 
 ## Install and verify
@@ -49,7 +49,7 @@ aivss-calc verify
 
 ```bash
 aivss-calc assess examples/asi06-example.json
-aivss-calc profile "CVSS:4.0/..." --aivss-vector "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
+aivss-calc profile "CVSS:4.0/..." --aivss-vector "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
 aivss-calc rubric
 aivss-calc demo
 ```
@@ -80,9 +80,8 @@ OWASP does not endorse this AIVSS candidate.
 - [Scoring](docs/SCORING.md): algorithms, invariants, and experimental status
 - [CVSS mapping](docs/CVSS-MAPPING.md): overlap and separation rules
 - [Validation](docs/VALIDATION.md): supported claims and calibration gates
-- [2.0 migration](docs/MIGRATION-2.0.md): breaking changes from draft 1.x
-- [Input schema](schemas/aivss-assessment-input-v2.0.json)
-- [Report schema](schemas/aivss-report-v2.0.json)
+- [Input schema](schemas/aivss-assessment-input-v1.0.json)
+- [Report schema](schemas/aivss-report-v1.0.json)
 
 `aivss_calc/data/cvss_v4_lookup.json` is derived from the FIRST CVSS v4.0
 reference implementation under the BSD-2-Clause license; see

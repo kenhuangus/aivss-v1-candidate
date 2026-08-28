@@ -33,7 +33,7 @@ deployer decision table:
    recommendation.
 2. When the Agentic AI Effect Class is **A2**, the recommended timeline advances
    **one SSVC outcome tier** (stopping at 3D; never into 3DF).
-3. **TA** (Traceability Avoidance), aliased as **TD** in v2.0 candidate vectors,
+3. **TA** (Traceability Avoidance), aliased as **TD** in v1.0 vectors,
    is mandatory metadata — it does **not** modify severity (Mode 1) or the BOD
    outcome.
 4. **EPSS** is recorded with a mandatory observation date but does not select the

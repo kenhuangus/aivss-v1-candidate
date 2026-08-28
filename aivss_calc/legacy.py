@@ -4,7 +4,7 @@ Retained solely so organizations holding v0.8 scores can reproduce them and
 migrate. The construction risks double-counting, treats ordinal factors as
 additive, and creates severity inflation without recalibrating the full scoring
 model. It remains only behind the explicit ``legacy`` command for historical
-reproduction and is not part of the AIVSS 2.0 candidate model.
+reproduction and is not part of the AIVSS 1.0 model.
 
 Two things changed relative to v0.8:
 

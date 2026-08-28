@@ -1,4 +1,4 @@
-"""Command-line interface for the AIVSS 2.0 candidate calculator."""
+"""Command-line interface for the AIVSS 1.0 calculator."""
 
 from __future__ import annotations
 
@@ -263,7 +263,7 @@ def cmd_legacy(args: argparse.Namespace) -> int:
         mitigation_residual=data.get("mitigation_residual"),
     )
     print(
-        "WARNING: historical v0.x reproduction only; not part of AIVSS 2.0 Candidate.",
+        "WARNING: historical v0.x reproduction only; not part of AIVSS 1.0.",
         file=sys.stderr,
     )
     _emit(result)

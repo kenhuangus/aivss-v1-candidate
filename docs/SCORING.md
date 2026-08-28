@@ -1,7 +1,7 @@
 # AIVSS Candidate Algorithms
 
-This document defines calculator behavior for AIVSS 2.0 Candidate, rubric
-2.0.0. Normative metric meanings live only in
+This document defines calculator behavior for AIVSS 1.0, rubric
+1.0.0. Normative metric meanings live only in
 [METRIC-RUBRIC.md](METRIC-RUBRIC.md).
 
 ## Assessment unit

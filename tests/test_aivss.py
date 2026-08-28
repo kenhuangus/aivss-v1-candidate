@@ -1,4 +1,4 @@
-"""Conformance and regression tests for the AIVSS 2.0 candidate calculator.
+"""Conformance and regression tests for the AIVSS 1.0 calculator.
 
 Assertions are exact. A scoring standard whose own tests carry wide tolerances
 cannot arbitrate between two implementations that disagree.
@@ -55,7 +55,7 @@ from aivss_calc.taxonomy import ASI_TOP_10, V08_CATEGORY_CROSSWALK
 from aivss_calc.validation import validate_assessment_input, validate_report
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
-SCHEMA = REPO / "schemas" / "aivss-report-v2.0.json"
+SCHEMA = REPO / "schemas" / "aivss-report-v1.0.json"
 
 # CVSS-BTE 7.8 (interpolated), MacroVector ceiling 8.0.
 EXAMPLE_VECTOR = "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P"
@@ -66,7 +66,7 @@ EXAMPLE_CA_DELTA = 0.1
 EXAMPLE_TD_DELTA = 0.5
 EXAMPLE_AGENTIC_RISK_DELTA = 1.3
 EXAMPLE_AIVSS = 9.1
-EXAMPLE_AI = "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
+EXAMPLE_AI = "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
 EXAMPLE_FULL = f"{EXAMPLE_VECTOR} {EXAMPLE_AI}"
 DECISION_CONTEXT = {
     "publicly_exposed_source": "test fixture",
@@ -438,7 +438,7 @@ class TestVectorParsing:
 
     def test_partial_ai_group_rejected(self):
         with pytest.raises(ValueError, match="all eight"):
-            parse_aivss_vector("AIVSS:2.0/LC:D/CP:C")
+            parse_aivss_vector("AIVSS:1.0/LC:D/CP:C")
 
     def test_appended_ai_metrics_are_rejected(self):
         with pytest.raises(ValueError, match="separate"):
@@ -446,11 +446,11 @@ class TestVectorParsing:
 
     def test_duplicate_ai_metric_rejected(self):
         with pytest.raises(ValueError, match="Duplicate AIVSS metric"):
-            parse_aivss_vector("AIVSS:2.0/LC:D/LC:I/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H")
+            parse_aivss_vector("AIVSS:1.0/LC:D/LC:I/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H")
 
     def test_wrong_extension_version_rejected(self):
         with pytest.raises(ValueError, match="must begin"):
-            parse_aivss_vector(EXAMPLE_AI.replace("AIVSS:2.0", "AIVSS:1.2"))
+            parse_aivss_vector(EXAMPLE_AI.replace("AIVSS:1.0", "AIVSS:2.0"))
 
     @pytest.mark.parametrize(
         "vector,match",
@@ -930,7 +930,7 @@ class TestEndToEnd:
             provenance=Provenance(
                 assessor="test",
                 tool="aivss-calc",
-                tool_version="2.0.0",
+                tool_version="1.0.0",
                 assessed_at="2026-08-27T00:00:00Z",
             ),
         )
@@ -968,7 +968,7 @@ class TestEndToEnd:
         assert "vector" not in report
 
     def test_a0_is_value_based_not_presence_based(self):
-        benign = "AIVSS:2.0/LC:N/CP:N/AP:N/SR:U/EX:W/PT:L/CA:N/TD:H"
+        benign = "AIVSS:1.0/LC:N/CP:N/AP:N/SR:U/EX:W/PT:L/CA:N/TD:H"
         report = self._assessment(aivss_vector=benign)
         assert report["agentic_ai_profile"]["agentic_effect_class"] == "A0"
         assert report["scores"]["candidate_adjusted"]["aivss"] == 8.7

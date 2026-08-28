@@ -4,7 +4,7 @@
   "title": "Adversarial content in agent memory biases later sessions",
   "summary": "Poisoned context persists across sessions and influences future agent decisions.",
   "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P",
-  "aivss_vector": "AIVSS:2.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H",
+  "aivss_vector": "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H",
   "publicly_exposed": true,
   "automatable": true,
   "technical_impact": "total",
@@ -98,7 +98,7 @@
     "assessor": "synthetic-reference-fixture",
     "assessor_kind": "imported",
     "tool": "aivss-calc",
-    "tool_version": "2.0.0",
+    "tool_version": "1.0.0",
     "assessed_at": "2026-08-27T00:00:00Z"
   }
 }

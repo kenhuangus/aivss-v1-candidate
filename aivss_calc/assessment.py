@@ -1,4 +1,4 @@
-"""Assembles a complete AIVSS 2.0 candidate assessment report."""
+"""Assembles a complete AIVSS 1.0 assessment report."""
 
 from __future__ import annotations
 

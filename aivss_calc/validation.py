@@ -39,11 +39,11 @@ _SOURCE_SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
 _INSTALLED_SCHEMA_DIR = Path(sysconfig.get_path("data")) / "share" / "aivss" / "schemas"
 SCHEMA_DIR = (
     _SOURCE_SCHEMA_DIR
-    if (_SOURCE_SCHEMA_DIR / "aivss-report-v2.0.json").is_file()
+    if (_SOURCE_SCHEMA_DIR / "aivss-report-v1.0.json").is_file()
     else _INSTALLED_SCHEMA_DIR
 )
-INPUT_SCHEMA = SCHEMA_DIR / "aivss-assessment-input-v2.0.json"
-REPORT_SCHEMA = SCHEMA_DIR / "aivss-report-v2.0.json"
+INPUT_SCHEMA = SCHEMA_DIR / "aivss-assessment-input-v1.0.json"
+REPORT_SCHEMA = SCHEMA_DIR / "aivss-report-v1.0.json"
 
 
 def _schema(path: Path) -> dict[str, Any]:

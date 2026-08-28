@@ -1,4 +1,4 @@
-# Agentic AI Metric Rubric 2.0.0
+# Agentic AI Metric Rubric 1.0.0
 
 This is the authoritative value-definition document for the eight AIVSS
 metrics. [SCORING.md](SCORING.md) owns algorithms; [CVSS-MAPPING.md](CVSS-MAPPING.md)
@@ -277,7 +277,7 @@ compatible with L when stable protected references support reconstruction.
 1. One coherent path and one value per metric.
 2. Eight evidence rationales, each tied to deployment evidence.
 3. `X` used for unresolved evidence rather than guessed severity.
-4. Separate ordered `AIVSS:2.0` vector.
+4. Separate ordered `AIVSS:1.0` vector.
 5. CVSS impact assessed independently.
 6. Any empirical SR claim includes episode `s`, `n`, environment, enforced
    budget, and Wilson bounds.

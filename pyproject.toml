@@ -1,7 +1,7 @@
 [project]
 name = "aivss-calc"
-version = "2.0.0"
-description = "AIVSS 2.0 candidate calculator with a separate Agentic AI profile"
+version = "1.0.0"
+description = "AIVSS 1.0 calculator with a separate Agentic AI profile"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["cvss>=3.6,<4", "jsonschema>=4,<5"]
@@ -25,8 +25,8 @@ aivss_calc = ["data/*.json"]
 
 [tool.setuptools.data-files]
 "share/aivss/schemas" = [
-  "schemas/aivss-assessment-input-v2.0.json",
-  "schemas/aivss-report-v2.0.json",
+  "schemas/aivss-assessment-input-v1.0.json",
+  "schemas/aivss-report-v1.0.json",
 ]
 "share/doc/aivss-calc" = ["THIRD_PARTY_NOTICES.md", "aivss-extension.json"]
 
