@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import shutil
 import threading
 from http.client import HTTPConnection
+from pathlib import Path
 
 from aivss_calc.demo_server import DemoHandler
 from http.server import ThreadingHTTPServer
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _with_server(test_fn):
@@ -59,7 +63,27 @@ def test_demo_top10_api():
     _with_server(run)
 
 
-def test_demo_scenario_api():
+def test_static_build_includes_web_assets():
+    from scripts.build_static_site import build
+
+    out = REPO_ROOT / "_site_test"
+    build(out)
+    try:
+        for path in (
+            out / "index.html",
+            out / "favicon.ico",
+            out / "web" / "style.css",
+            out / "web" / "app.js",
+            out / "data" / "top10.json",
+        ):
+            assert path.is_file(), path
+        html = (out / "index.html").read_text(encoding="utf-8")
+        assert 'href="/web/style.css"' in html
+        assert (out / "web" / "style.css").read_text(encoding="utf-8").strip()
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
+
+
     def run(host, port):
         status, body = _get(host, port, "/api/scenario/ASI04")
         assert status == 200

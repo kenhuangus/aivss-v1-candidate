@@ -22,8 +22,16 @@ def build(out_dir: Path, base_href: str = DEFAULT_BASE) -> None:
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
+    web_out = out_dir / "web"
+    web_out.mkdir()
 
-    shutil.copytree(WEB_ROOT, out_dir, dirs_exist_ok=True)
+    for path in WEB_ROOT.iterdir():
+        if not path.is_file():
+            continue
+        if path.name in {"style.css", "app.js"}:
+            shutil.copy2(path, web_out / path.name)
+        else:
+            shutil.copy2(path, out_dir / path.name)
 
     data_dir = out_dir / "data"
     data_dir.mkdir()
