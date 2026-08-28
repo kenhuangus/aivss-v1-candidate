@@ -3,30 +3,76 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AIVSS — OWASP Agentic Top 10 Demo</title>
+  <title>AIVSS — OWASP Agentic Top 10 | DistributedApps.ai</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/web/style.css" />
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-inner">
-      <p class="eyebrow">AIVSS Calculator · SSVC / BOD 26-04 Layer 3</p>
-      <h1>OWASP Agentic Top 10 — AIVSS Scores</h1>
-      <p class="lede">
-        Mode 1 severity (<code>CVSS-BTE</code>), candidate adjusted score, Agentic AI Effect Class,
-        and SSVC-based remediation timelines for all ten ASI reference scenarios.
-      </p>
-      <div class="badges">
-        <span class="badge normative">Mode 1 normative</span>
-        <span class="badge experimental">Candidate experimental</span>
-        <span class="badge ssvc">SSVC cisa:DT_BOD2604:1.0.0</span>
-      </div>
-    </div>
+  <header class="site-header">
+    <a class="brand" href="https://distributedapps.ai/" target="_blank" rel="noopener">
+      <svg class="brand-mark" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+        <circle cx="14" cy="14" r="13" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="14" cy="8" r="2.5" fill="currentColor"/>
+        <circle cx="8" cy="18" r="2.5" fill="currentColor"/>
+        <circle cx="20" cy="18" r="2.5" fill="currentColor"/>
+        <line x1="14" y1="10.5" x2="9.5" y2="16" stroke="currentColor" stroke-width="1.2"/>
+        <line x1="14" y1="10.5" x2="18.5" y2="16" stroke="currentColor" stroke-width="1.2"/>
+        <line x1="10.5" y1="18" x2="17.5" y2="18" stroke="currentColor" stroke-width="1.2"/>
+      </svg>
+      <span class="brand-name">DistributedApps.ai</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="https://distributedapps.ai/" target="_blank" rel="noopener">Home</a>
+      <a href="https://github.com/kenhuangus/aivss-v1-candidate" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://aivss.owasp.org/" target="_blank" rel="noopener">AIVSS Project</a>
+      <a href="https://github.com/kenhuangus/aivss-v1-candidate/blob/main/docs/SSVC.md" target="_blank" rel="noopener">SSVC Layer 3</a>
+      <a href="#scores">Top 10 Scores</a>
+    </nav>
   </header>
 
-  <main class="container">
-    <section class="toolbar">
-      <label>
-        Sort by
+  <section class="hero">
+    <div class="hero-inner">
+      <p class="hero-eyebrow">AIVSS Calculator · SSVC / BOD 26-04</p>
+      <h1 class="hero-title">
+        OWASP Agentic Top 10<br />
+        <span class="hero-accent">AIVSS Severity Scores</span>
+      </h1>
+      <p class="hero-lede">
+        Live Mode 1 severity (<code>CVSS-BTE</code>), candidate adjusted scores,
+        Agentic AI Effect Class, and SSVC-based remediation timelines for all ten
+        ASI reference scenarios.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#scores">View Scores</a>
+        <a class="btn btn-outline" href="https://github.com/kenhuangus/aivss-v1-candidate/blob/main/docs/SSVC.md" target="_blank" rel="noopener">
+          SSVC Documentation
+          <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+      <div class="hero-badges">
+        <span class="pill">Mode 1 normative</span>
+        <span class="pill pill-warn">Candidate experimental</span>
+        <span class="pill pill-accent">cisa:DT_BOD2604:1.0.0</span>
+      </div>
+    </div>
+  </section>
+
+  <main id="scores" class="main">
+    <section class="section-head">
+      <h2 class="section-title">OWASP Agentic Top 10</h2>
+      <p class="section-lede">
+        Synthetic reference fixtures demonstrating AIVSS calculation, SSVC Layer 3
+        remediation analogies, and the A2 candidate overlay — not real incidents.
+      </p>
+    </section>
+
+    <div class="toolbar">
+      <label class="field">
+        <span class="field-label">Sort by</span>
         <select id="sort-by">
           <option value="asi">ASI ID</option>
           <option value="mode1" selected>Mode 1 score</option>
@@ -34,24 +80,32 @@
           <option value="class">Effect class</option>
         </select>
       </label>
-      <button id="refresh" type="button">Refresh live scores</button>
-    </section>
+      <button id="refresh" type="button" class="btn btn-outline btn-sm">Refresh live scores</button>
+    </div>
 
     <section id="grid" class="grid" aria-live="polite"></section>
 
-    <section id="detail" class="detail hidden">
-      <button id="close-detail" type="button" class="ghost">Close</button>
-      <h2 id="detail-title"></h2>
-      <div id="detail-body"></div>
+    <section id="detail" class="detail hidden" role="dialog" aria-labelledby="detail-title">
+      <div class="detail-card">
+        <button id="close-detail" type="button" class="detail-close" aria-label="Close">&times;</button>
+        <h3 id="detail-title" class="detail-title"></h3>
+        <div id="detail-body"></div>
+      </div>
     </section>
   </main>
 
-  <footer class="footer">
+  <footer class="site-footer">
     <p>
-      Reference scenarios are synthetic fixtures for format and calculation demonstration — not real incidents.
+      Reference scenarios are synthetic fixtures for format and calculation demonstration.
       Candidate scores and timeline overlays are <strong>experimental-uncalibrated</strong>.
       BOD outcomes use CERT/CC SSVC decision table
-      <code>cisa:DT_BOD2604:1.0.0</code> (Householder et al., 2019; CISA, 2026).
+      <code>cisa:DT_BOD2604:1.0.0</code>.
+      AIVSS maps to the
+      <a href="https://aivss.owasp.org/" target="_blank" rel="noopener">OWASP AIVSS project</a>.
+    </p>
+    <p class="footer-brand">
+      <a href="https://distributedapps.ai/" target="_blank" rel="noopener">DistributedApps.ai</a>
+      · Agentic AI Threat Intelligence
     </p>
   </footer>
 

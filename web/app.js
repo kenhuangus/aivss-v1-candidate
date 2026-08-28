@@ -26,7 +26,7 @@ function overlayHtml(row) {
       row.bod_timeline &&
       row.aivss_recommended_timeline !== row.bod_timeline);
   if (!escalated) return "";
-  return `<br><span class="overlay">AIVSS overlay: ${label}</span>`;
+  return `<span class="overlay">AIVSS overlay: ${label}</span>`;
 }
 
 function renderCards(data) {
@@ -42,14 +42,16 @@ function renderCards(data) {
     .map((row) => {
       return `
         <article class="card" data-asi="${row.asi}">
+          <div class="card-icon">${row.asi.replace("ASI", "")}</div>
           <div class="card-head">
             <div class="asi-id">${row.asi}</div>
             <div class="class-pill class-${row.agentic_effect_class}">${row.agentic_effect_class}</div>
           </div>
-          <div class="card-title">${row.name}<br><small>${row.title}</small></div>
+          <h3 class="card-name">${row.name}</h3>
+          <p class="card-desc">${row.title}</p>
           <div class="score-row">
             <div class="score-box">
-              <div class="score-label">Mode 1 (CVSS-BTE)</div>
+              <div class="score-label">Mode 1 · CVSS-BTE</div>
               <div class="score-value mode1">${formatScore(row.mode1_aivss)}</div>
               <div class="bar"><span style="width:${scoreWidth(row.mode1_aivss)}"></span></div>
             </div>
@@ -60,8 +62,10 @@ function renderCards(data) {
             </div>
           </div>
           <div class="timeline">
-            <strong>SSVC/BOD analogy:</strong> ${row.bod_timeline_label || "—"}${overlayHtml(row)}
+            <strong>SSVC / BOD analogy:</strong> ${row.bod_timeline_label || "—"}
+            ${overlayHtml(row)}
           </div>
+          <span class="btn btn-card">View full assessment</span>
         </article>`;
     })
     .join("");
@@ -72,7 +76,7 @@ function renderCards(data) {
 }
 
 async function loadTop10() {
-  grid.innerHTML = "<p class='loading'>Loading scores…</p>";
+  grid.innerHTML = "<p class='loading'>Loading OWASP Agentic Top 10 scores…</p>";
   const res = await fetch("/api/top10");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   rows = await res.json();
@@ -85,13 +89,14 @@ async function loadTop10() {
 function hideDetail() {
   detail.classList.add("hidden");
   detailBody.innerHTML = "";
+  document.body.style.overflow = "";
 }
 
 async function showDetail(asi) {
   detail.classList.remove("hidden");
-  detailTitle.textContent = `${asi} — full assessment`;
+  document.body.style.overflow = "hidden";
+  detailTitle.textContent = `${asi} — Full Assessment`;
   detailBody.innerHTML = "<p class='loading'>Loading report…</p>";
-  detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
   const res = await fetch(`/api/scenario/${encodeURIComponent(asi)}`);
   if (!res.ok) {
@@ -111,21 +116,27 @@ async function showDetail(asi) {
   const effectClass = report.agentic_ai_profile?.agentic_effect_class ?? "—";
   const ssvc = report.decision?.ssvc;
   const decision = report.decision ?? {};
+  const bodLabel = decision.bod_2604_analogy_label || decision.bod_2604_label || "—";
 
   detailBody.innerHTML = `
-    <p><strong>Mode 1:</strong> ${formatScore(mode1)}
-       · <strong>Candidate:</strong> ${formatScore(candidate)}
-       · <strong>Class:</strong> ${effectClass}</p>
-    <p><strong>SSVC/BOD analogy:</strong> ${decision.bod_2604_analogy_label || decision.bod_2604_label || "—"}
-       ${
-         decision.escalated && decision.aivss_recommended_label
-           ? ` · <strong>AIVSS overlay:</strong> ${decision.aivss_recommended_label}`
-           : ""
-       }</p>
+    <div class="detail-meta">
+      <span><strong>Mode 1:</strong> ${formatScore(mode1)}</span>
+      <span><strong>Candidate:</strong> ${formatScore(candidate)}</span>
+      <span><strong>Effect class:</strong> ${effectClass}</span>
+      <span><strong>BOD analogy:</strong> ${bodLabel}</span>
+      ${
+        decision.escalated && decision.aivss_recommended_label
+          ? `<span><strong>Overlay:</strong> ${decision.aivss_recommended_label}</span>`
+          : ""
+      }
+    </div>
     ${
       ssvc
-        ? `<p><strong>SSVC decision table:</strong> <code>${ssvc.decision_table}</code>
-           · outcomes <code>${ssvc.outcome_namespace}</code></p>`
+        ? `<div class="detail-ssvc">
+             <strong>SSVC decision table:</strong>
+             <code>${ssvc.decision_table}</code>
+             · outcomes <code>${ssvc.outcome_namespace}</code>
+           </div>`
         : ""
     }
     <pre>${JSON.stringify(report, null, 2)}</pre>`;
@@ -134,6 +145,12 @@ async function showDetail(asi) {
 sortBy.addEventListener("change", () => renderCards(rows));
 refreshBtn.addEventListener("click", () => loadTop10().catch(showError));
 closeDetailBtn.addEventListener("click", hideDetail);
+detail.addEventListener("click", (e) => {
+  if (e.target === detail) hideDetail();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !detail.classList.contains("hidden")) hideDetail();
+});
 
 function showError(err) {
   grid.innerHTML = `<p class="error">Failed to load: ${err.message}. Run <code>aivss-calc demo</code>.</p>`;
