@@ -42,7 +42,7 @@
     "vector": {
       "type": "string",
       "pattern": "^CVSS:4\\.0/",
-      "description": "CVSS v4.0 vector extended with the Agentic AI metric group (LC/CP/AP/SR/TD)."
+      "description": "CVSS v4.0 vector extended with the Agentic AI metric group (LC/CP/AP/SR/EX/TD)."
     },
     "cvss": {
       "type": "object",
@@ -82,26 +82,38 @@
       "properties": {
         "mode1_interpretation": {
           "type": "object",
-          "required": ["aivss", "cvss_bte", "td_delta", "basis", "status"],
+          "required": ["aivss", "cvss_bte", "ex_delta", "td_delta", "agentic_risk_delta", "basis", "status"],
           "additionalProperties": false,
           "properties": {
             "aivss": {
               "type": "number",
               "minimum": 0.0,
               "maximum": 10.0,
-              "description": "Published AIVSS risk score: min(10, CVSS-BTE + TD_delta)."
+              "description": "Published AIVSS risk score: min(10, CVSS-BTE + EX_delta + TD_delta)."
             },
             "cvss_bte": {
               "type": "number",
               "minimum": 0.0,
               "maximum": 10.0,
-              "description": "Interpolated CVSS Base+Threat+Environmental score before TD adjustment."
+              "description": "Interpolated CVSS Base+Threat+Environmental score before agentic risk adjustment."
+            },
+            "ex_delta": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 0.4,
+              "description": "Extension Surface risk adjustment (EX:W=0.4, EX:M=0.15, EX:N=0.0)."
             },
             "td_delta": {
               "type": "number",
               "minimum": 0.0,
               "maximum": 0.5,
               "description": "Traceability Deficit risk adjustment (TD:H=0.5, TD:M=0.2, TD:L=0.0)."
+            },
+            "agentic_risk_delta": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 0.9,
+              "description": "Combined EX_delta + TD_delta applied to the published score."
             },
             "basis": { "type": "string" },
             "status": { "const": "normative" }
@@ -111,10 +123,12 @@
           "type": "object",
           "required": [
             "aivss_btea",
-            "btea_before_td",
+            "btea_before_agentic_risk",
             "promoted_macrovector",
             "macrovector_delta",
+            "ex_delta",
             "td_delta",
+            "agentic_risk_delta",
             "delta",
             "saturated",
             "status"
@@ -122,10 +136,12 @@
           "additionalProperties": false,
           "properties": {
             "aivss_btea": { "type": "number", "minimum": 0.0, "maximum": 10.0 },
-            "btea_before_td": { "type": "number", "minimum": 0.0, "maximum": 10.0 },
+            "btea_before_agentic_risk": { "type": "number", "minimum": 0.0, "maximum": 10.0 },
             "promoted_macrovector": { "type": "string", "pattern": "^[0-2]{6}$" },
             "macrovector_delta": { "type": "number", "minimum": 0.0 },
+            "ex_delta": { "type": "number", "minimum": 0.0, "maximum": 0.4 },
             "td_delta": { "type": "number", "minimum": 0.0, "maximum": 0.5 },
+            "agentic_risk_delta": { "type": "number", "minimum": 0.0, "maximum": 0.9 },
             "delta": { "type": "number", "minimum": 0.0 },
             "saturated": { "type": "boolean" },
             "status": { "type": "string", "pattern": "^provisional" }

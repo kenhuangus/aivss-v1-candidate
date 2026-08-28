@@ -10,13 +10,13 @@
     "assessor": "aivss-calc examples",
     "assessor_kind": "human",
     "tool": "aivss-calc",
-    "tool_version": "1.0.1",
+    "tool_version": "1.1.0",
     "assessed_at": "2026-08-27"
   },
   "finding_id": "AIVSS-ASI07-001",
   "risk_category": "ASI07",
   "title": "Unsigned agent-to-agent messages allow instruction relay",
-  "cvss_vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:N/UI:N/VC:L/VI:H/VA:N/SC:H/SI:L/SA:N/E:P/LC:I/CP:S/AP:L/SR:R/TD:M",
+  "cvss_vector": "CVSS:4.0/AV:A/AC:L/AT:N/PR:N/UI:N/VC:L/VI:H/VA:N/SC:H/SI:L/SA:N/E:P/LC:I/CP:S/AP:L/SR:R/EX:W/TD:M",
   "publicly_exposed": false,
   "evidence": {
     "poc": true

@@ -10,13 +10,13 @@
     "assessor": "aivss-calc examples",
     "assessor_kind": "human",
     "tool": "aivss-calc",
-    "tool_version": "1.0.1",
+    "tool_version": "1.1.0",
     "assessed_at": "2026-08-27"
   },
   "finding_id": "AIVSS-ASI05-001",
   "risk_category": "ASI05",
   "title": "Code interpreter executes attacker-supplied shell commands",
-  "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N/E:P/LC:D/CP:N/AP:N/SR:R/TD:L",
+  "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N/E:P/LC:D/CP:N/AP:N/SR:R/EX:M/TD:L",
   "publicly_exposed": true,
   "evidence": {
     "poc": true

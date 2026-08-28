@@ -10,13 +10,13 @@
     "assessor": "aivss-calc examples",
     "assessor_kind": "human",
     "tool": "aivss-calc",
-    "tool_version": "1.0.1",
+    "tool_version": "1.1.0",
     "assessed_at": "2026-08-27"
   },
   "finding_id": "AIVSS-ASI04-001",
   "risk_category": "ASI04",
   "title": "Compromised MCP plugin supplies malicious tool definitions",
-  "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P/LC:I/CP:N/AP:L/SR:P/TD:M",
+  "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P/LC:I/CP:N/AP:L/SR:P/EX:W/TD:M",
   "publicly_exposed": true,
   "evidence": {
     "poc": true

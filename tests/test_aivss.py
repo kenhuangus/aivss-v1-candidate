@@ -29,10 +29,10 @@ from aivss_calc import (
     promote,
     split_ai_vector,
 )
-from aivss_calc.ai_metrics import apply_td_risk, td_risk_delta
+from aivss_calc.ai_metrics import apply_agentic_risk, ex_risk_delta, td_risk_delta, agentic_risk_delta
 from aivss_calc.decision import TIMELINE_URGENCY, advance_timeline, decide, escalate
 from aivss_calc.legacy import compute_severity, factor_mean, score_legacy
-from aivss_calc.cvss_score import score_cvss_bte
+from aivss_calc.cvss_score import round_half_up, score_cvss_bte
 from aivss_calc.macrovector import _lookup_table
 from aivss_calc.taxonomy import ASI_TOP_10, V08_CATEGORY_CROSSWALK
 
@@ -42,9 +42,11 @@ SCHEMA = REPO / "schemas" / "aivss-report-v1.0.json"
 # CVSS-BTE 7.8 (interpolated), MacroVector ceiling 8.0.
 EXAMPLE_VECTOR = "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P"
 EXAMPLE_CVSS_BTE = 7.8
+EXAMPLE_EX_DELTA = 0.4
 EXAMPLE_TD_DELTA = 0.5
-EXAMPLE_AIVSS = 8.3
-EXAMPLE_AI = "LC:D/CP:C/AP:L/SR:R/TD:H"
+EXAMPLE_AGENTIC_RISK_DELTA = 0.9
+EXAMPLE_AIVSS = 8.7
+EXAMPLE_AI = "LC:D/CP:C/AP:L/SR:R/EX:W/TD:H"
 EXAMPLE_FULL = f"{EXAMPLE_VECTOR}/{EXAMPLE_AI}"
 
 
@@ -75,15 +77,20 @@ class TestIdentityRule:
         assert result["aivss_btea"] == EXAMPLE_CVSS_BTE
         assert result["delta"] == 0.0
 
-    def test_td_risk_delta_adjusts_score(self):
-        """TD (Traceability Deficit) is mandatory and adjusts the published AIVSS score."""
+    def test_agentic_risk_delta_adjusts_score(self):
+        """EX and TD are mandatory and adjust the published AIVSS score."""
         metrics = parse_cvss_vector(EXAMPLE_VECTOR)
         base = lookup_aivss(EXAMPLE_VECTOR, metrics, "A0")["aivss_btea"]
-        for td, delta in (("H", 0.5), ("M", 0.2), ("L", 0.0)):
-            profile = AIProfile(td=td, scored_present=False)
-            assert profile.effect_class() == "A0"
-            assert td_risk_delta(td) == delta
-            assert apply_td_risk(base, td) == round(min(10.0, base + delta), 1)
+        for ex, ex_delta in (("W", 0.4), ("M", 0.15), ("N", 0.0)):
+            for td, td_delta in (("H", 0.5), ("M", 0.2), ("L", 0.0)):
+                profile = AIProfile(ex=ex, td=td, scored_present=False)
+                assert profile.effect_class() == "A0"
+                assert ex_risk_delta(ex) == ex_delta
+                assert td_risk_delta(td) == td_delta
+                assert agentic_risk_delta(ex=ex, td=td) == ex_delta + td_delta
+                assert apply_agentic_risk(base, ex=ex, td=td) == round_half_up(
+                    min(10.0, base + ex_delta + td_delta), 1
+                )
 
     def test_interpolated_score_differs_from_macrovector_ceiling(self):
         metrics = parse_cvss_vector(EXAMPLE_VECTOR)
@@ -193,8 +200,8 @@ class TestVectorParsing:
         with pytest.raises(ValueError, match="all four scored metrics"):
             split_ai_vector(f"{EXAMPLE_VECTOR}/LC:D/CP:C")
 
-    def test_scored_ai_group_without_td_rejected(self):
-        with pytest.raises(ValueError, match="TD"):
+    def test_scored_ai_group_without_mandatory_rejected(self):
+        with pytest.raises(ValueError, match="EX"):
             split_ai_vector(f"{EXAMPLE_VECTOR}/LC:D/CP:C/AP:L/SR:R")
 
     def test_duplicate_ai_metric_rejected(self):
@@ -525,7 +532,7 @@ class TestEndToEnd:
             finding_id="AIVSS-EX-001",
             cvss_vector=EXAMPLE_FULL,
             asi_category="ASI06",
-            ai_profile=AIProfile(lc="D", cp="C", ap="L", sr="R", td="H"),
+            ai_profile=AIProfile(lc="D", cp="C", ap="L", sr="R", ex="W", td="H"),
             evidence=ExploitationEvidence(poc=True),
             publicly_exposed=True,
             org_context=OrgContext(business_criticality="high", reach="high", likelihood=0.72),
@@ -535,32 +542,35 @@ class TestEndToEnd:
         defaults.update(overrides)
         return assess(Assessment(**defaults))
 
-    def test_mode1_applies_td_risk_delta(self):
+    def test_mode1_applies_agentic_risk_delta(self):
         report = self._assessment()
         assert report["cvss"]["cvss_bte"] == EXAMPLE_CVSS_BTE
-        assert report["scores"]["mode1_interpretation"]["td_delta"] == EXAMPLE_TD_DELTA
-        assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_AIVSS
+        mode1 = report["scores"]["mode1_interpretation"]
+        assert mode1["ex_delta"] == EXAMPLE_EX_DELTA
+        assert mode1["td_delta"] == EXAMPLE_TD_DELTA
+        assert mode1["agentic_risk_delta"] == EXAMPLE_AGENTIC_RISK_DELTA
+        assert mode1["aivss"] == EXAMPLE_AIVSS
 
     def test_mode2_is_provisional_and_higher(self):
         report = self._assessment()
-        assert report["scores"]["mode2_macrovector"]["aivss_btea"] == 9.5
-        assert report["scores"]["mode2_macrovector"]["btea_before_td"] == 9.0
+        assert report["scores"]["mode2_macrovector"]["aivss_btea"] == 9.9
+        assert report["scores"]["mode2_macrovector"]["btea_before_agentic_risk"] == 9.0
         assert report["scores"]["mode2_macrovector"]["status"].startswith("provisional")
 
     def test_vector_carries_ai_group(self):
         assert self._assessment()["vector"].endswith(EXAMPLE_AI)
 
-    def test_td_only_yields_identity_and_a0(self):
-        td_only = f"{EXAMPLE_VECTOR}/TD:H"
-        report = self._assessment(cvss_vector=td_only, ai_profile=None)
+    def test_mandatory_only_yields_identity_and_a0(self):
+        mandatory_only = f"{EXAMPLE_VECTOR}/EX:W/TD:H"
+        report = self._assessment(cvss_vector=mandatory_only, ai_profile=None)
         assert report["agentic_ai_profile"]["present"] is False
         assert report["agentic_ai_profile"]["agentic_effect_class"] == "A0"
-        assert report["scores"]["mode2_macrovector"]["btea_before_td"] == EXAMPLE_CVSS_BTE
+        assert report["scores"]["mode2_macrovector"]["btea_before_agentic_risk"] == EXAMPLE_CVSS_BTE
         assert report["scores"]["mode2_macrovector"]["aivss_btea"] == EXAMPLE_AIVSS
         assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_AIVSS
 
-    def test_assess_without_td_rejected(self):
-        with pytest.raises(ValueError, match="TD"):
+    def test_assess_without_mandatory_rejected(self):
+        with pytest.raises(ValueError, match="EX"):
             assess(
                 Assessment(
                     finding_id="x",
@@ -578,7 +588,7 @@ class TestEndToEnd:
             assess(
                 Assessment(
                     finding_id="x",
-                    cvss_vector=f"{EXAMPLE_VECTOR}/TD:H",
+                    cvss_vector=f"{EXAMPLE_VECTOR}/EX:W/TD:H",
                     asi_category="ASI06",
                     include_decision=True,
                 )

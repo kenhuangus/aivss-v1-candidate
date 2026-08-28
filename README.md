@@ -2,18 +2,23 @@
 
 Reference implementation of **AIVSS** — CVSS-compatible risk scoring for **OWASP Top 10 for Agentic Applications 2026** (ASI01–ASI10).
 
-Read [`docs/SCORING.md`](docs/SCORING.md) first — it defines **Agentic AI Profile**, **Agentic Effect Class** (A0/A1/A2), and every scoring formula.
+Read [`docs/SCORING.md`](docs/SCORING.md) first — it defines **Agentic AI Profile**, **Agentic Effect Class** (A0/A1/A2), and every scoring formula. See [`docs/CVSS-MAPPING.md`](docs/CVSS-MAPPING.md) for what CVSS covers vs what AIVSS adds.
 
 ## Scoring summary
 
 | Output | Formula |
 |--------|---------|
-| **AIVSS** (Mode 1) | `min(10, CVSS-BTE + TD_delta)` |
-| **Agentic Effect Class** | Boolean ladder on LC / CP / AP / SR (A0 absent → A2 substantial) |
-| **AIVSS-BTEA** (Mode 2) | MacroVector ceiling-delta + TD_delta |
-| **AIVSS-P** | Geometric mean using TD-adjusted severity |
+| **AIVSS** (Mode 1) | `min(10, CVSS-BTE + EX_delta + TD_delta)` |
+| **Agentic Effect Class** | Boolean ladder on LC / CP / AP / SR / EX (A0 absent → A2 substantial) |
+| **AIVSS-BTEA** (Mode 2) | MacroVector ceiling-delta + EX_delta + TD_delta |
+| **AIVSS-P** | Geometric mean using EX- and TD-adjusted severity |
 
-**TD (Traceability Deficit)** is mandatory and adjusts risk: `TD:H +0.5`, `TD:M +0.2`, `TD:L +0.0`.
+**EX (Extension Surface)** and **TD (Traceability Deficit)** are mandatory risk factors:
+
+| Metric | Values | Risk delta |
+|--------|--------|------------|
+| EX | W / M / N | +0.4 / +0.15 / +0.0 |
+| TD | H / M / L | +0.5 / +0.2 / +0.0 |
 
 ## Install
 
@@ -26,7 +31,7 @@ pytest
 
 ```bash
 aivss-calc assess examples/asi06-example.json
-aivss-calc profile "CVSS:4.0/.../LC:D/CP:C/AP:L/SR:R/TD:H"
+aivss-calc profile "CVSS:4.0/.../LC:D/CP:C/AP:L/SR:R/EX:W/TD:H"
 aivss-calc taxonomy
 aivss-calc verify
 ```

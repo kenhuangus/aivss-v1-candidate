@@ -10,7 +10,9 @@ from .ai_metrics import (
     AI_METRIC_ORDER,
     AI_METRICS,
     AIProfile,
-    apply_td_risk,
+    agentic_risk_delta,
+    apply_agentic_risk,
+    ex_risk_delta,
     split_ai_vector,
     td_risk_delta,
 )
@@ -40,7 +42,7 @@ from .macrovector import (
 from .priority import compute_priority, priority_band
 from .taxonomy import ASI_TOP_10, V08_CATEGORY_CROSSWALK, normalize_asi
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 
 __all__ = [
     "AIProfile",
@@ -69,6 +71,9 @@ __all__ = [
     "priority_band",
     "promote",
     "score_cvss_bte",
+    "agentic_risk_delta",
+    "apply_agentic_risk",
+    "ex_risk_delta",
     "td_risk_delta",
     "split_ai_vector",
 ]

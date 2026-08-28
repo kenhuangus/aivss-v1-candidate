@@ -1,8 +1,9 @@
-"""The AIVSS AI metric group: LC, CP, AP, SR (scored) and TD (mandatory risk factor).
+"""The AIVSS Agentic AI metric group: LC, CP, AP, SR (scored) and EX, TD (mandatory risk factors).
 
-TD implements Agent Untraceability from the original OWASP AIVSS Agentic AI Core
-Risks taxonomy. It is required in every conformant assessment and adjusts the
-published AIVSS risk score via a documented ceiling-delta (Section 10.5).
+EX (Extension Surface) captures tool, MCP, plugin, skill, and workflow invocation on the
+attack path — mechanisms CVSS does not name. TD (Traceability Deficit) captures whether
+post-incident reconstruction of agent reasoning and tool calls is feasible. Both are
+required in every conformant assessment and adjust the published AIVSS score.
 
 Completes Appendix E sections 3, 4 and 8, which name the metrics and use the
 values LC:D / CP:C / AP:L / SR:R / TD:H in a worked example but never define the
@@ -120,17 +121,79 @@ def apply_td_risk(score: float, td: str) -> float:
     return round_half_up(min(10.0, score + td_risk_delta(td)), 1)
 
 
-SCORED_AI_METRICS: dict[str, dict[str, tuple[str, str]]] = {
+EX_VALUES: dict[str, tuple[str, str]] = {
+    "W": (
+        "Wide",
+        "Multiple extension mechanisms are in play — native tools, MCP servers, plugins, "
+        "agentic skills, and/or workflow steps — with a broad or dynamically loaded "
+        "invocation surface reachable from the vulnerable path.",
+    ),
+    "M": (
+        "Moderate",
+        "One primary extension class (e.g. allowlisted tools only, or a fixed MCP bundle) "
+        "with constrained invocation; no arbitrary plugin or workflow composition.",
+    ),
+    "N": (
+        "Narrow",
+        "No security-relevant extensions on the exploitation path — read-only responses, "
+        "fixed deterministic actions, or no tool/skill/MCP/plugin/workflow invocation.",
+    ),
+}
+
+# Extension Surface risk adjustment. CVSS SC/SI/SA capture downstream *impact* of tool
+# reach; EX captures *what extension mechanisms exist* on the attack path (ASI02, ASI04).
+EX_RISK_DELTA: dict[str, float] = {
+    "W": 0.4,
+    "M": 0.15,
+    "N": 0.0,
+}
+
+
+def ex_risk_delta(ex: str) -> float:
+    """Return the severity adjustment for an EX value."""
+    if ex not in EX_RISK_DELTA:
+        raise ValueError(
+            f"Illegal value {ex!r} for Agentic AI metric 'EX'; "
+            f"expected one of {sorted(EX_RISK_DELTA)}"
+        )
+    return EX_RISK_DELTA[ex]
+
+
+def agentic_risk_delta(*, ex: str, td: str) -> float:
+    """Combined mandatory risk-factor adjustment (EX + TD)."""
+    return ex_risk_delta(ex) + td_risk_delta(td)
+
+
+def apply_agentic_risk(score: float, *, ex: str, td: str) -> float:
+    """Apply EX and TD ceiling-deltas to a base severity score."""
+    return round_half_up(min(10.0, score + agentic_risk_delta(ex=ex, td=td)), 1)
+
+
+MANDATORY_AGENTIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
+    "EX": EX_VALUES,
+    "TD": TD_VALUES,
+}
+
+SCORED_AGENTIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     "LC": LC_VALUES,
     "CP": CP_VALUES,
     "AP": AP_VALUES,
     "SR": SR_VALUES,
 }
 
-AI_METRICS: dict[str, dict[str, tuple[str, str]]] = {**SCORED_AI_METRICS, "TD": TD_VALUES}
+# Backward-compatible alias used in tests and macrovector-adjacent code.
+SCORED_AI_METRICS = SCORED_AGENTIC_METRICS
 
-# Appendix E section 8 fixes this order.
-AI_METRIC_ORDER: tuple[str, ...] = ("LC", "CP", "AP", "SR", "TD")
+AGENTIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
+    **SCORED_AGENTIC_METRICS,
+    **MANDATORY_AGENTIC_METRICS,
+}
+
+# Backward-compatible alias for parsers and CLI.
+AI_METRICS = AGENTIC_METRICS
+
+AGENTIC_METRIC_ORDER: tuple[str, ...] = ("LC", "CP", "AP", "SR", "EX", "TD")
+AI_METRIC_ORDER = AGENTIC_METRIC_ORDER
 
 AGENTIC_EFFECT_CLASS_LABELS: dict[str, str] = {
     "A0": "Absent — no agentic amplification beyond CVSS",
@@ -141,25 +204,31 @@ AGENTIC_EFFECT_CLASS_LABELS: dict[str, str] = {
 
 @dataclass(frozen=True)
 class AIProfile:
-    """A parsed AI metric profile. TD adjusts the published AIVSS risk score."""
+    """A parsed Agentic AI Profile. EX and TD adjust the published AIVSS risk score."""
 
     lc: str = "N"
     cp: str = "N"
     ap: str = "N"
     sr: str = "U"
+    ex: str | None = None
     td: str | None = None
     scored_present: bool = True
 
     def __post_init__(self) -> None:
         for name, value in (("LC", self.lc), ("CP", self.cp), ("AP", self.ap), ("SR", self.sr)):
-            if value not in AI_METRICS[name]:
+            if value not in SCORED_AGENTIC_METRICS[name]:
                 raise ValueError(
-                    f"Illegal value {value!r} for AI metric {name!r}; "
-                    f"expected one of {sorted(AI_METRICS[name])}"
+                    f"Illegal value {value!r} for Agentic AI metric {name!r}; "
+                    f"expected one of {sorted(SCORED_AGENTIC_METRICS[name])}"
                 )
+        if self.ex is not None and self.ex not in EX_VALUES:
+            raise ValueError(
+                f"Illegal value {self.ex!r} for Agentic AI metric 'EX'; "
+                f"expected one of {sorted(EX_VALUES)}"
+            )
         if self.td is not None and self.td not in TD_VALUES:
             raise ValueError(
-                f"Illegal value {self.td!r} for AI metric 'TD'; "
+                f"Illegal value {self.td!r} for Agentic AI metric 'TD'; "
                 f"expected one of {sorted(TD_VALUES)}"
             )
 
@@ -184,26 +253,38 @@ class AIProfile:
             return "A2"
         if self.lc == "D" and self.sr == "R":
             return "A2"
+        if self.ex == "W" and self.lc in ("D", "I"):
+            return "A2"
         if self.is_absent:
             return "A0"
         return "A1"
 
     def to_vector_fragment(self) -> str:
-        """Render as the AI metric group of a CVSS v4.0 vector, in Appendix E order."""
-        if not self.scored_present:
-            return f"TD:{self.td}" if self.td is not None else ""
-        parts = [f"LC:{self.lc}", f"CP:{self.cp}", f"AP:{self.ap}", f"SR:{self.sr}"]
+        """Render as the Agentic AI metric group of a CVSS v4.0 vector."""
+        parts: list[str] = []
+        if self.scored_present:
+            parts.extend(
+                [f"LC:{self.lc}", f"CP:{self.cp}", f"AP:{self.ap}", f"SR:{self.sr}"]
+            )
+        if self.ex is not None:
+            parts.append(f"EX:{self.ex}")
         if self.td is not None:
             parts.append(f"TD:{self.td}")
         return "/".join(parts)
 
     def describe(self) -> dict[str, str]:
-        out = {
-            "LC": f"{self.lc} ({LC_VALUES[self.lc][0]})",
-            "CP": f"{self.cp} ({CP_VALUES[self.cp][0]})",
-            "AP": f"{self.ap} ({AP_VALUES[self.ap][0]})",
-            "SR": f"{self.sr} ({SR_VALUES[self.sr][0]})",
-        }
+        out: dict[str, str] = {}
+        if self.scored_present:
+            out.update(
+                {
+                    "LC": f"{self.lc} ({LC_VALUES[self.lc][0]})",
+                    "CP": f"{self.cp} ({CP_VALUES[self.cp][0]})",
+                    "AP": f"{self.ap} ({AP_VALUES[self.ap][0]})",
+                    "SR": f"{self.sr} ({SR_VALUES[self.sr][0]})",
+                }
+            )
+        if self.ex is not None:
+            out["EX"] = f"{self.ex} ({EX_VALUES[self.ex][0]})"
         if self.td is not None:
             out["TD"] = f"{self.td} ({TD_VALUES[self.td][0]})"
         return out
@@ -213,7 +294,7 @@ def split_ai_vector(vector: str) -> tuple[str, AIProfile | None]:
     """Split a combined vector into its CVSS portion and its AI metric profile.
 
     Appendix E section 8 extends the CVSS vector with an optional AI metric group,
-    e.g. ``CVSS:4.0/.../E:P/LC:D/CP:C/AP:L/SR:R/TD:H``. Returns the CVSS-only
+    e.g. ``CVSS:4.0/.../E:P/LC:D/CP:C/AP:L/SR:R/EX:W/TD:H``. Returns the CVSS-only
     vector string and the Agentic AI Profile, or None when no AI metrics are present.
     """
     cvss_parts: list[str] = []
@@ -235,26 +316,52 @@ def split_ai_vector(vector: str) -> tuple[str, AIProfile | None]:
     if not found:
         return "/".join(cvss_parts), None
 
-    scored_found = [name for name in SCORED_AI_METRICS if name in found]
+    scored_found = [name for name in SCORED_AGENTIC_METRICS if name in found]
+    mandatory_found = {name: found[name] for name in MANDATORY_AGENTIC_METRICS if name in found}
+
     if not scored_found:
-        if "TD" in found:
-            return "/".join(cvss_parts), AIProfile(td=found["TD"], scored_present=False)
+        if mandatory_found:
+            missing_mandatory = [
+                name for name in MANDATORY_AGENTIC_METRICS if name not in mandatory_found
+            ]
+            if missing_mandatory:
+                labels = {
+                    "EX": "Extension Surface",
+                    "TD": "Traceability Deficit",
+                }
+                parts = [f"{n} ({labels[n]})" for n in missing_mandatory]
+                raise ValueError(
+                    "EX and TD are both mandatory in every conformant assessment; "
+                    f"missing: {', '.join(parts)}"
+                )
+            return "/".join(cvss_parts), AIProfile(
+                ex=mandatory_found["EX"],
+                td=mandatory_found["TD"],
+                scored_present=False,
+            )
         return "/".join(cvss_parts), None
 
-    missing = [name for name in SCORED_AI_METRICS if name not in found]
+    missing = [name for name in SCORED_AGENTIC_METRICS if name not in found]
     if missing:
         raise ValueError(
-            "An AI metric group must specify all four scored metrics "
+            "An Agentic AI metric group must specify all four scored metrics "
             f"(LC, CP, AP, SR); missing: {', '.join(missing)}"
         )
 
-    if "TD" not in found:
-        raise ValueError(
-            "TD (Traceability Deficit) is mandatory whenever scored AI metrics "
-            "(LC, CP, AP, SR) are present"
-        )
+    for name in MANDATORY_AGENTIC_METRICS:
+        if name not in found:
+            label = "Extension Surface" if name == "EX" else "Traceability Deficit"
+            raise ValueError(
+                f"{name} ({label}) is mandatory whenever scored Agentic AI metrics "
+                "(LC, CP, AP, SR) are present"
+            )
 
     profile = AIProfile(
-        lc=found["LC"], cp=found["CP"], ap=found["AP"], sr=found["SR"], td=found.get("TD")
+        lc=found["LC"],
+        cp=found["CP"],
+        ap=found["AP"],
+        sr=found["SR"],
+        ex=found["EX"],
+        td=found["TD"],
     )
     return "/".join(cvss_parts), profile

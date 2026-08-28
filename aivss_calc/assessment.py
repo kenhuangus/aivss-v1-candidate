@@ -5,7 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .ai_metrics import AGENTIC_EFFECT_CLASS_LABELS, AIProfile, apply_td_risk, split_ai_vector, td_risk_delta
+from .ai_metrics import (
+    AGENTIC_EFFECT_CLASS_LABELS,
+    AIProfile,
+    agentic_risk_delta,
+    apply_agentic_risk,
+    ex_risk_delta,
+    split_ai_vector,
+    td_risk_delta,
+)
 from .cvss_score import score_cvss_bte
 from .decision import ExploitationEvidence, decide
 from .macrovector import lookup_aivss, macrovector, parse_cvss_vector
@@ -13,7 +21,7 @@ from .priority import compute_priority
 from .taxonomy import ASI_TOP_10, normalize_asi
 
 SPEC_VERSION = "1.0"
-RUBRIC_VERSION = "1.0.2"
+RUBRIC_VERSION = "1.1.0"
 VALID_ASSESSOR_KINDS = frozenset({"human", "scanner", "llm_assisted", "imported"})
 
 
@@ -78,22 +86,25 @@ def assess(a: Assessment) -> dict[str, Any]:
     cvss_only, embedded = split_ai_vector(a.cvss_vector)
     profile = a.ai_profile if a.ai_profile is not None else embedded
 
-    if profile is None or profile.td is None:
+    if profile is None or profile.td is None or profile.ex is None:
         raise ValueError(
-            "TD (Traceability Deficit) is mandatory in every conformant assessment; "
-            "include TD:H, TD:M, or TD:L in the vector or agentic_ai_profile"
+            "EX (Extension Surface) and TD (Traceability Deficit) are mandatory in every "
+            "conformant assessment; include EX:W/M/N and TD:H/M/L in the vector"
         )
 
     metrics = parse_cvss_vector(cvss_only)
     mv = macrovector(metrics)
     cvss_bte = score_cvss_bte(cvss_only)
     ai_class = profile.effect_class() if profile is not None else "A0"
+    ex = profile.ex if profile is not None else "N"
     td = profile.td if profile is not None else "L"
+    ex_delta = ex_risk_delta(ex)
     td_delta = td_risk_delta(td)
-    aivss_mode1 = apply_td_risk(cvss_bte, td)
+    risk_delta = agentic_risk_delta(ex=ex, td=td)
+    aivss_mode1 = apply_agentic_risk(cvss_bte, ex=ex, td=td)
 
     mode2_raw = lookup_aivss(cvss_only, metrics, ai_class)
-    mode2_btea = apply_td_risk(mode2_raw["aivss_btea"], td)
+    mode2_btea = apply_agentic_risk(mode2_raw["aivss_btea"], ex=ex, td=td)
     asi = normalize_asi(a.asi_category)
 
     combined_vector = cvss_only
@@ -113,19 +124,23 @@ def assess(a: Assessment) -> dict[str, Any]:
             "mode1_interpretation": {
                 "aivss": aivss_mode1,
                 "cvss_bte": cvss_bte,
+                "ex_delta": ex_delta,
                 "td_delta": td_delta,
+                "agentic_risk_delta": risk_delta,
                 "basis": (
-                    "AIVSS = min(10, CVSS-BTE + TD_delta); "
+                    "AIVSS = min(10, CVSS-BTE + EX_delta + TD_delta); "
                     "LC/CP/AP/SR determine Agentic Effect Class only"
                 ),
                 "status": "normative",
             },
             "mode2_macrovector": {
                 "aivss_btea": mode2_btea,
-                "btea_before_td": mode2_raw["aivss_btea"],
+                "btea_before_agentic_risk": mode2_raw["aivss_btea"],
                 "promoted_macrovector": mode2_raw["promoted_macrovector"],
                 "macrovector_delta": mode2_raw["delta"],
+                "ex_delta": ex_delta,
                 "td_delta": td_delta,
+                "agentic_risk_delta": risk_delta,
                 "delta": round(mode2_btea - cvss_bte, 1),
                 "saturated": mode2_raw["saturated"],
                 "status": "provisional -- strawman lookup, pending expert calibration",
@@ -135,7 +150,7 @@ def assess(a: Assessment) -> dict[str, Any]:
     }
 
     if profile is not None:
-        metrics_out = profile.describe() if profile.scored_present or profile.td is not None else {}
+        metrics_out = profile.describe() if profile.scored_present or profile.ex or profile.td else {}
         report["agentic_ai_profile"] = {
             "present": profile.scored_present,
             "metrics": metrics_out,

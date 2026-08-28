@@ -10,13 +10,13 @@
     "assessor": "aivss-calc examples",
     "assessor_kind": "human",
     "tool": "aivss-calc",
-    "tool_version": "1.0.1",
+    "tool_version": "1.1.0",
     "assessed_at": "2026-08-27"
   },
   "finding_id": "AIVSS-ASI06-001",
   "risk_category": "ASI06",
   "title": "Adversarial content in agent memory biases later sessions",
-  "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P/LC:D/CP:C/AP:L/SR:R/TD:H",
+  "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P/LC:D/CP:C/AP:L/SR:R/EX:W/TD:H",
   "publicly_exposed": true,
   "evidence": {
     "poc": true

@@ -8,7 +8,7 @@ import sys
 from typing import Any
 
 from . import __version__
-from .ai_metrics import AI_METRICS, AIProfile, apply_td_risk, split_ai_vector, td_risk_delta
+from .ai_metrics import AI_METRICS, AIProfile, apply_agentic_risk, ex_risk_delta, split_ai_vector, td_risk_delta, agentic_risk_delta
 from .assessment import Assessment, OrgContext, Provenance, assess, identity_holds
 from .cvss_score import score_cvss_bte
 from .decision import ExploitationEvidence, decide
@@ -36,26 +36,31 @@ def _parse_optional_bool(value: str) -> bool | None:
 
 
 def _profile_from_args(args: argparse.Namespace) -> AIProfile | None:
-    supplied = {k: getattr(args, k.lower(), None) for k in ("LC", "CP", "AP", "SR", "TD")}
-    scored = {k: v for k, v in supplied.items() if k != "TD" and v is not None}
-    if not scored and supplied["TD"] is None:
+    supplied = {k: getattr(args, k.lower(), None) for k in ("LC", "CP", "AP", "SR", "EX", "TD")}
+    scored = {k: v for k, v in supplied.items() if k not in ("EX", "TD") and v is not None}
+    if not scored and supplied["EX"] is None and supplied["TD"] is None:
         return None
     if scored and len(scored) != 4:
         missing = [k for k in ("LC", "CP", "AP", "SR") if supplied[k] is None]
         raise SystemExit(
             f"error: all four scored Agentic AI metrics are required; missing {', '.join(missing)}"
         )
-    if scored and supplied["TD"] is None:
-        raise SystemExit("error: TD is mandatory when scored AI metrics are supplied")
+    if scored and (supplied["EX"] is None or supplied["TD"] is None):
+        raise SystemExit("error: EX and TD are mandatory when scored Agentic AI metrics are supplied")
     if not scored:
-        return AIProfile(td=supplied["TD"], scored_present=False)
+        return AIProfile(ex=supplied["EX"], td=supplied["TD"], scored_present=False)
     return AIProfile(
-        lc=supplied["LC"], cp=supplied["CP"], ap=supplied["AP"], sr=supplied["SR"], td=supplied["TD"]
+        lc=supplied["LC"],
+        cp=supplied["CP"],
+        ap=supplied["AP"],
+        sr=supplied["SR"],
+        ex=supplied["EX"],
+        td=supplied["TD"],
     )
 
 
 def _add_ai_metric_flags(p: argparse.ArgumentParser) -> None:
-    for name in ("LC", "CP", "AP", "SR", "TD"):
+    for name in ("LC", "CP", "AP", "SR", "EX", "TD"):
         p.add_argument(
             f"--{name.lower()}",
             choices=sorted(AI_METRICS[name]),
@@ -86,22 +91,28 @@ def _add_evidence_flags(p: argparse.ArgumentParser) -> None:
 def cmd_profile(args: argparse.Namespace) -> int:
     cvss_only, embedded = split_ai_vector(args.vector)
     profile = _profile_from_args(args) if any(
-        getattr(args, k.lower(), None) is not None for k in ("LC", "CP", "AP", "SR", "TD")
+        getattr(args, k.lower(), None) is not None for k in ("LC", "CP", "AP", "SR", "EX", "TD")
     ) else embedded
     metrics = parse_cvss_vector(cvss_only)
     mv = macrovector(metrics)
     score = score_cvss_bte(cvss_only)
+    ex = profile.ex if profile is not None and profile.ex is not None else "N"
     td = profile.td if profile is not None and profile.td is not None else "L"
-    aivss = apply_td_risk(score, td)
+    aivss = apply_agentic_risk(score, ex=ex, td=td)
     payload: dict[str, Any] = {
         "mode": "interpretation",
         "status": "normative",
         "vector": cvss_only if profile is None else f"{cvss_only}/{profile.to_vector_fragment()}",
         "macrovector": mv,
         "cvss_bte": score,
+        "ex_delta": ex_risk_delta(ex),
         "td_delta": td_risk_delta(td),
+        "agentic_risk_delta": agentic_risk_delta(ex=ex, td=td),
         "aivss": aivss,
-        "note": "AIVSS = min(10, CVSS-BTE + TD_delta); LC/CP/AP/SR determine Agentic Effect Class only.",
+        "note": (
+            "AIVSS = min(10, CVSS-BTE + EX_delta + TD_delta); "
+            "LC/CP/AP/SR determine Agentic Effect Class only."
+        ),
     }
     if profile is not None:
         payload["agentic_ai_profile"] = profile.describe()
@@ -115,7 +126,7 @@ def cmd_profile(args: argparse.Namespace) -> int:
 def cmd_lookup(args: argparse.Namespace) -> int:
     cvss_only, embedded = split_ai_vector(args.vector)
     profile = _profile_from_args(args) if any(
-        getattr(args, k.lower(), None) is not None for k in ("LC", "CP", "AP", "SR", "TD")
+        getattr(args, k.lower(), None) is not None for k in ("LC", "CP", "AP", "SR", "EX", "TD")
     ) else embedded
     if profile is None:
         raise SystemExit(
