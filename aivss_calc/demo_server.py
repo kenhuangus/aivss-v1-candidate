@@ -105,6 +105,10 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_file(WEB_ROOT / "index.html", "text/html; charset=utf-8")
             return
 
+        if route == "/favicon.ico":
+            self._send_file(WEB_ROOT / "favicon.ico", "image/x-icon")
+            return
+
         if route.startswith("/web/"):
             rel = route.removeprefix("/web/")
             target = (WEB_ROOT / rel).resolve()
@@ -117,6 +121,8 @@ class DemoHandler(BaseHTTPRequestHandler):
                 ".js": "application/javascript; charset=utf-8",
                 ".json": "application/json; charset=utf-8",
                 ".svg": "image/svg+xml",
+                ".ico": "image/x-icon",
+                ".png": "image/png",
             }.get(suffix, "application/octet-stream")
             self._send_file(target, ctype)
             return

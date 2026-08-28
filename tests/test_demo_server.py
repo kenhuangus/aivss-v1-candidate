@@ -34,7 +34,7 @@ def _get(host: str, port: int, path: str) -> tuple[int, bytes]:
 
 def test_demo_index_and_assets():
     def run(host, port):
-        for path in ("/", "/web/style.css", "/web/app.js"):
+        for path in ("/", "/favicon.ico", "/web/style.css", "/web/app.js"):
             status, body = _get(host, port, path)
             assert status == 200, path
             assert body, path
