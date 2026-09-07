@@ -185,87 +185,12 @@
         "basis": {"type": "string", "minLength": 1}
       }
     },
-    "candidateScore": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "aivss",
-        "raw_aivss",
-        "cvss_bte",
-        "ex_delta",
-        "pt_delta",
-        "ca_delta",
-        "td_delta",
-        "agentic_risk_delta",
-        "capped",
-        "zero_impact_invariant_applied",
-        "basis",
-        "status",
-        "weight_set",
-        "calibration_status"
-      ],
-      "properties": {
-        "aivss": {"$ref": "#/$defs/nullableScore"},
-        "raw_aivss": {"type": ["number", "null"], "minimum": 0},
-        "cvss_bte": {"$ref": "#/$defs/score"},
-        "ex_delta": {"type": ["number", "null"], "minimum": 0, "maximum": 0.4},
-        "pt_delta": {"type": ["number", "null"], "minimum": 0, "maximum": 0.3},
-        "ca_delta": {"type": ["number", "null"], "minimum": 0, "maximum": 0.3},
-        "td_delta": {"type": ["number", "null"], "minimum": 0, "maximum": 0.5},
-        "agentic_risk_delta": {"type": ["number", "null"], "minimum": 0, "maximum": 1.5},
-        "capped": {"type": ["boolean", "null"]},
-        "zero_impact_invariant_applied": {"type": ["boolean", "null"]},
-        "basis": {"type": "string", "minLength": 1},
-        "status": {"enum": ["experimental-uncalibrated", "incomplete"]},
-        "weight_set": {"const": "candidate-2026-08-r2"},
-        "calibration_status": {"const": "not empirically calibrated"}
-      }
-    },
-    "experimentalMacrovector": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["aivss_btea", "status"],
-      "properties": {
-        "aivss_btea": {"$ref": "#/$defs/nullableScore"},
-        "btea_before_agentic_risk": {"$ref": "#/$defs/score"},
-        "promoted_macrovector": {"type": "string", "pattern": "^[0-2]{6}$"},
-        "macrovector_delta": {"type": "number"},
-        "agentic_risk_delta": {"type": "number"},
-        "delta": {"type": "number"},
-        "saturated": {"type": "boolean"},
-        "status": {"enum": ["experimental-uncalibrated", "incomplete"]}
-      },
-      "oneOf": [
-        {
-          "properties": {
-            "status": {"const": "incomplete"},
-            "aivss_btea": {"type": "null"}
-          }
-        },
-        {
-          "required": [
-            "btea_before_agentic_risk",
-            "promoted_macrovector",
-            "macrovector_delta",
-            "agentic_risk_delta",
-            "delta",
-            "saturated"
-          ],
-          "properties": {
-            "status": {"const": "experimental-uncalibrated"},
-            "aivss_btea": {"$ref": "#/$defs/score"}
-          }
-        }
-      ]
-    },
     "scores": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mode1_interpretation", "candidate_adjusted"],
+      "required": ["mode1_interpretation"],
       "properties": {
-        "mode1_interpretation": {"$ref": "#/$defs/mode1Score"},
-        "candidate_adjusted": {"$ref": "#/$defs/candidateScore"},
-        "experimental_macrovector": {"$ref": "#/$defs/experimentalMacrovector"}
+        "mode1_interpretation": {"$ref": "#/$defs/mode1Score"}
       }
     },
     "provenance": {
@@ -323,11 +248,21 @@
         },
         "automatable": {"type": "boolean"},
         "automatable_source": {
-          "enum": ["CISA Vulnrichment", "supplied", "BOD 26-04 default (no)"]
+          "enum": [
+            "CISA Vulnrichment",
+            "supplied",
+            "BOD 26-04 default (no)",
+            "CISA BOD 26-04 FAQ (missing metadata)"
+          ]
         },
         "technical_impact": {"enum": ["partial", "total"]},
         "technical_impact_source": {
-          "enum": ["CISA Vulnrichment", "supplied", "BOD 26-04 default (total)"]
+          "enum": [
+            "CISA Vulnrichment",
+            "supplied",
+            "BOD 26-04 default (total)",
+            "CISA BOD 26-04 FAQ (missing metadata)"
+          ]
         },
         "agentic_effect_class": {"enum": ["A0", "A1", "A2", "AX"]},
         "td": {"enum": ["H", "M", "L", "X"]}

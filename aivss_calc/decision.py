@@ -28,6 +28,11 @@ BOD_2604_DIRECTIVE_URL = (
     "https://www.cisa.gov/news-events/directives/"
     "bod-26-04-prioritizing-security-updates-based-risk"
 )
+BOD_2604_FAQ_URL = (
+    "https://www.cisa.gov/news-events/directives/"
+    "bod-26-04-implementation-guidance-prioritizing-security-updates-based-risk"
+)
+FAQ_MISSING_METADATA_SOURCE = "CISA BOD 26-04 FAQ (missing metadata)"
 SSVC_METHODOLOGY_URL = "https://certcc.github.io/SSVC/"
 SSVC_DECISION_POINTS: dict[str, str] = {
     "in_kev": "cisa:KEV:1.0.0",
@@ -49,10 +54,10 @@ TIMELINE_LABELS: dict[str, str] = {
 TIMELINE_URGENCY: tuple[str, ...] = ("FSU", "60D", "14D", "3D", "3DF")
 
 # All 16 rows of BOD 26-04 Table 1, keyed (in_kev, publicly_exposed, automatable,
-# technical_impact). Held as data rather than boolean conditions: the fast tier
-# requires exposure or automatability in addition to KEV, so hand-written
-# conditions such as "KEV and total impact implies 3 days" are wrong for
-# (yes, no, no, total), which is 14 days.
+# technical_impact). Held as data rather than boolean conditions: for KEV rows the
+# 3D/3DF fast tier requires exposure or automatability in addition to KEV (e.g.
+# (yes, no, no, total) is 14D, not 3D). Non-KEV rows can still reach 3D (e.g.
+# exposed + automatable + total impact).
 BOD_2604_TABLE: dict[tuple[bool, bool, bool, str], str] = {
     (False, False, False, "partial"): "FSU",
     (True, False, False, "partial"): "14D",
@@ -325,11 +330,23 @@ def decide(
     ):
         raise ValueError("supplied technical_impact conflicts with CISA Vulnrichment")
 
+    metadata_both_missing = (
+        has_cve
+        and not evidence.cisa_kev
+        and automatable is None
+        and vulnrichment_automatable is None
+        and technical_impact is None
+        and vulnrichment_technical_impact is None
+    )
+
     if vulnrichment_automatable is not None:
         automatable = vulnrichment_automatable
         automatable_source = "CISA Vulnrichment"
     elif automatable is not None:
         automatable_source = "supplied"
+    elif metadata_both_missing:
+        automatable = False
+        automatable_source = FAQ_MISSING_METADATA_SOURCE
     elif has_cve and not evidence.cisa_kev:
         automatable = False
         automatable_source = "BOD 26-04 default (no)"
@@ -350,6 +367,9 @@ def decide(
     elif technical_impact is not None:
         technical_impact = technical_impact.strip().lower()
         impact_source = "supplied"
+    elif metadata_both_missing:
+        technical_impact = "total"
+        impact_source = FAQ_MISSING_METADATA_SOURCE
     elif has_cve and not evidence.cisa_kev:
         technical_impact = "total"
         impact_source = "BOD 26-04 default (total)"
@@ -364,12 +384,15 @@ def decide(
             "it is not derived from CVSS"
         )
 
-    base = bod_timeline(
-        in_kev=bool(evidence.cisa_kev),
-        publicly_exposed=publicly_exposed,
-        automatable=bool(automatable),
-        technical_impact=technical_impact,
-    )
+    if metadata_both_missing:
+        base = "60D"
+    else:
+        base = bod_timeline(
+            in_kev=bool(evidence.cisa_kev),
+            publicly_exposed=publicly_exposed,
+            automatable=bool(automatable),
+            technical_impact=technical_impact,
+        )
     if agentic_effect_class == "AX" or td == "X":
         overlay_triggered = None
         recommended = None
@@ -380,7 +403,7 @@ def decide(
         overlay_status = "not-assessed"
     else:
         # v1.0 SSVC extension: Agentic AI Effect Class A2 advances one outcome
-        # tier. Traceability (TA/TD) is mandatory metadata — not an overlay input.
+        # tier. TD (Traceability Deficit) is mandatory metadata — not an overlay input.
         overlay_triggered = agentic_effect_class == "A2"
         recommended = advance_timeline(base, 1 if overlay_triggered else 0)
         overlay_status = "experimental-uncalibrated"
@@ -406,7 +429,7 @@ def decide(
             "decision_point_namespaces": dict(SSVC_DECISION_POINTS),
             "extension_note": (
                 "Agentic AI Effect Class is a transparent fifth SSVC extension "
-                "input; TA (Traceability Avoidance) is recorded but does not "
+                "input; TD (Traceability Deficit) is recorded but does not "
                 "modify the BOD outcome."
             ),
         },
@@ -439,6 +462,9 @@ def decide(
         ),
         "overlay_status": overlay_status,
     }
+    if metadata_both_missing:
+        result["missing_metadata_faq_applied"] = True
+        result["bod_2604_faq_source"] = BOD_2604_FAQ_URL
     if compliance_applicable:
         result.update(
             {
