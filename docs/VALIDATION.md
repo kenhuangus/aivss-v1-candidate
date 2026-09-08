@@ -34,6 +34,26 @@ validity:
 Reports expose these statuses in machine-readable fields. Documentation,
 examples, and CLI output must use the same labels.
 
+## Synthetic fixtures and AIVSS-P (Phase 6)
+
+Worked examples under `examples/` are **synthetic reference fixtures** generated
+from the scenario catalog. They illustrate Mode 1 scoring paths only; they are
+not field measurements or loss estimates.
+
+AIVSS-P (Level 3) is an organization-internal priority index. It is **not**
+monetary loss. Unknown likelihood, reach, or criticality MUST be recorded as
+unknown (`X`) and excluded from the numeric index — unknown is not zero.
+Organizations MUST publish their qualitative→numeric mapping internally before
+using band cut-points (provisional percentile bands use an artificial uniform
+grid and require corpus recalibration).
+
+When AIVSS-P band conflicts with BOD baseline (e.g., Immediate vs 60D), the
+`cisa:BOD2604:1.0.0` outcome is the federal compliance obligation. Release
+gates evaluate in order; the most-restrictive applicable gate wins. Waivers
+document deployment exceptions; they are not product roadmaps. TD — not TA —
+is the traceability metric for gate conditions. Mode 2 and candidate_adjusted
+triggers are withdrawn.
+
 ## Required evidence before a stable scoring claim
 
 A stable release may not label a numeric output normative until all gates pass:
