@@ -8,25 +8,18 @@ import re
 from typing import Any
 
 from .ai_metrics import (
-    ADJUSTMENT_STATUS,
     AGENTIC_METRIC_ORDER,
     AGENTIC_METRICS,
     AGENTIC_EFFECT_CLASS_LABELS,
     AIProfile,
     EFFECT_CLASS_STATUS,
-    apply_agentic_risk,
-    candidate_adjustment,
-    ca_risk_delta,
-    ex_risk_delta,
     parse_aivss_vector,
-    pt_risk_delta,
     split_ai_vector,
-    td_risk_delta,
     validate_metric_evidence,
 )
-from .cvss_score import round_half_up, score_cvss_bte
+from .cvss_score import score_cvss_bte
 from .decision import ExploitationEvidence, decide
-from .macrovector import lookup_aivss, macrovector, parse_cvss_vector
+from .macrovector import macrovector, parse_cvss_vector
 from .priority import compute_priority
 from .taxonomy import ASI_TOP_10, normalize_asi
 from .versions import (
@@ -34,7 +27,6 @@ from .versions import (
     REPORT_SCHEMA_VERSION,
     RUBRIC_VERSION,
     SPEC_VERSION,
-    WEIGHT_SET_ID,
 )
 
 VALID_ASSESSOR_KINDS = frozenset({"human", "scanner", "llm_assisted", "imported"})
@@ -119,7 +111,6 @@ class Assessment:
     vulnrichment_technical_impact: str | None = None
     include_decision: bool = True
     include_priority: bool = False
-    include_experimental_mode2: bool = False
 
 
 def assessment_from_payload(payload: dict[str, Any]) -> Assessment:
@@ -149,7 +140,6 @@ def assessment_from_payload(payload: dict[str, Any]) -> Assessment:
         vulnrichment_technical_impact=payload.get("vulnrichment_technical_impact"),
         include_decision=payload.get("include_decision", True),
         include_priority=payload.get("include_priority", False),
-        include_experimental_mode2=payload.get("include_experimental_mode2", False),
     )
 
 
@@ -167,12 +157,7 @@ def assess(a: Assessment) -> dict[str, Any]:
         value = getattr(a, name)
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ValueError(f"{name} must be a non-empty string or omitted")
-    for name in (
-        "fceb_bod_2604_scope",
-        "include_decision",
-        "include_priority",
-        "include_experimental_mode2",
-    ):
+    for name in ("fceb_bod_2604_scope", "include_decision", "include_priority"):
         if type(getattr(a, name)) is not bool:
             raise ValueError(f"{name} must be true or false")
     if not isinstance(a.metric_evidence, dict):
@@ -243,10 +228,7 @@ def assess(a: Assessment) -> dict[str, Any]:
     mv = macrovector(metrics)
     cvss_bte = score_cvss_bte(cvss_only)
     ai_class = profile.effect_class()
-    ex, pt, ca, td = profile.ex, profile.pt, profile.ca, profile.td
-    adjustment = None
-    if profile.complete:
-        adjustment = candidate_adjustment(cvss_bte, ex=ex, pt=pt, ca=ca, td=td)
+    td = profile.td
 
     asi = normalize_asi(a.asi_category)
 
@@ -267,30 +249,9 @@ def assess(a: Assessment) -> dict[str, Any]:
                 "cvss_bte": cvss_bte,
                 "status": "normative",
                 "basis": (
-                    "Mode 1: AIVSS = CVSS-BTE. Agentic AI metrics are parallel "
-                    "metadata and do not modify the severity number."
+                    "AIVSS = CVSS-BTE. Agentic AI metrics are parallel metadata "
+                    "and do not modify the severity number."
                 ),
-            },
-            "candidate_adjusted": {
-                "aivss": adjustment.value if adjustment else None,
-                "raw_aivss": adjustment.raw_value if adjustment else None,
-                "cvss_bte": cvss_bte,
-                "ex_delta": ex_risk_delta(ex) if adjustment else None,
-                "pt_delta": pt_risk_delta(pt) if adjustment else None,
-                "ca_delta": ca_risk_delta(ca) if adjustment else None,
-                "td_delta": td_risk_delta(td) if adjustment else None,
-                "agentic_risk_delta": adjustment.delta if adjustment else None,
-                "capped": adjustment.capped if adjustment else None,
-                "zero_impact_invariant_applied": (
-                    cvss_bte == 0.0 if adjustment else None
-                ),
-                "basis": (
-                    "Candidate only: AIVSS = min(10, CVSS-BTE + EX + PT + CA + TD); "
-                    "a zero-impact CVSS result remains zero"
-                ),
-                "status": ADJUSTMENT_STATUS if adjustment else "incomplete",
-                "weight_set": WEIGHT_SET_ID,
-                "calibration_status": "not empirically calibrated",
             },
         },
         "provenance": a.provenance.to_dict(),
@@ -316,28 +277,6 @@ def assess(a: Assessment) -> dict[str, Any]:
         "agentic_effect_class_status": EFFECT_CLASS_STATUS,
     }
 
-    if a.include_experimental_mode2:
-        if not profile.complete:
-            report["scores"]["experimental_macrovector"] = {
-                "status": "incomplete",
-                "aivss_btea": None,
-            }
-        else:
-            mode2_raw = lookup_aivss(cvss_only, metrics, ai_class)
-            mode2_btea = apply_agentic_risk(
-                mode2_raw["aivss_btea"], ex=ex, pt=pt, ca=ca, td=td
-            )
-            report["scores"]["experimental_macrovector"] = {
-                "aivss_btea": mode2_btea,
-                "btea_before_agentic_risk": mode2_raw["aivss_btea"],
-                "promoted_macrovector": mode2_raw["promoted_macrovector"],
-                "macrovector_delta": mode2_raw["delta"],
-                "agentic_risk_delta": adjustment.delta,
-                "delta": round_half_up(mode2_btea - cvss_bte, 1),
-                "saturated": mode2_raw["saturated"],
-                "status": "experimental-uncalibrated",
-            }
-
     if a.include_decision:
         if a.publicly_exposed is None:
             raise ValueError(
@@ -361,23 +300,11 @@ def assess(a: Assessment) -> dict[str, Any]:
     if a.include_priority:
         if a.org_context is None:
             raise ValueError("org_context is required when include_priority is true")
-        if adjustment is None:
-            raise ValueError(
-                "priority cannot be calculated while any AIVSS metric is X"
-            )
         report["priority"] = compute_priority(
-            severity=adjustment.value,
+            severity=cvss_bte,
             business_criticality=a.org_context.business_criticality,
             reach=a.org_context.reach,
             likelihood=a.org_context.likelihood,
         )
 
     return report
-
-
-def identity_holds(cvss_vector: str) -> bool:
-    """Verify that A0 leaves the experimental MacroVector unchanged."""
-    cvss_only, _ = split_ai_vector(cvss_vector)
-    metrics = parse_cvss_vector(cvss_only)
-    cvss_bte = score_cvss_bte(cvss_only)
-    return lookup_aivss(cvss_only, metrics, "A0")["aivss_btea"] == cvss_bte

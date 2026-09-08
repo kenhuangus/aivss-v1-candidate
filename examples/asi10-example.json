@@ -93,7 +93,6 @@
   },
   "include_decision": true,
   "include_priority": false,
-  "include_experimental_mode2": false,
   "provenance": {
     "assessor": "synthetic-reference-fixture",
     "assessor_kind": "imported",

@@ -30,19 +30,22 @@ PYTEST_COUNT = "127"
 MACROVECTOR_EQ_TABLE = (
     "Accessible text equivalent of FIRST CVSS v4.0 MacroVector Table 4 "
     "(equivalence groups EQ1–EQ6). Editorial note: the published figure is an "
-    "image; this table is the normative text substitute.\n\n"
-    "EQ1 — Attack Vector (AV): N / A / L / P\n"
-    "EQ2 — Attack Complexity (AC): L / H\n"
-    "EQ3 — Attack Requirements (AT) and Vulnerable-System impacts (VC, VI, VA) jointly\n"
-    "EQ4 — Privileges Required (PR) and User Interaction (UI) jointly\n"
+    "image; this table is the normative text substitute. Source: FIRST CVSS v4.0 "
+    "Specification Document, Section 8.2 and Table 29 "
+    "(https://www.first.org/cvss/v4.0/specification-document).\n\n"
+    "EQ1 — Attack Vector (AV), Privileges Required (PR), and User Interaction (UI) jointly\n"
+    "EQ2 — Attack Complexity (AC) and Attack Requirements (AT) jointly\n"
+    "EQ3 — Vulnerable-System impacts (VC, VI, VA) jointly\n"
+    "EQ4 — Subsequent-System impacts (SC, SI, SA) jointly\n"
     "EQ5 — Exploit Maturity (E) from the Threat metric group\n"
-    "EQ6 — Subsequent-System impacts (SC, SI, SA) plus Environmental modifiers "
-    "(Modified Base, Modified Threat, Modified Environmental, CR, IR, AR)\n\n"
-    "Base metric combination count: 4 × 2 × 2 × 3 × 3 × 3^6 = 104,976 ordered "
-    "Base vectors. MacroVector equivalence collapses these into 270 expert-ranked "
-    "severity classes (~15M full CVSS v4.0 vectors when Threat and Environmental "
-    "groups vary). The earlier draft figure of 2,048 Base combinations omitted "
-    "the full EQ3/EQ5/EQ6 mapping.\n"
+    "EQ6 — Vulnerable-System impacts (VC, VI, VA) plus Security Requirements "
+    "(CR, IR, AR) per FIRST Table 29\n\n"
+    "Base metric combination count: 4 × 2 × 2 × 3 × 3 × 3\u2076 = 104,976 ordered "
+    "Base vectors (AV×AC×AT×PR×UI×six impact metrics at three levels each). "
+    "MacroVector equivalence collapses these 104,976 Base combinations into 270 "
+    "expert-ranked severity classes; the full CVSS v4.0 vector space is far larger "
+    "(~15M vectors) when Threat and Environmental groups vary. The earlier draft "
+    "figure of 2,048 Base combinations omitted the full EQ3/EQ5/EQ6 mapping.\n"
 )
 
 FEDRAMP_MILESTONES = (
@@ -118,12 +121,12 @@ def text_replacements() -> list[tuple[str, str, bool]]:
         # Phase 3 — MacroVector / EQ
         (
             "MacroVector. CVSS v4.0 collapses the 2,048 possible Base metric combinations into 270 equivalence classes (MacroVectors), each assigned an expert-ranked severity score (FIRST, 2024). A MacroVector is identified by six equivalence-group indices EQ1–EQ6.",
-            "MacroVector. CVSS v4.0 assigns every valid vector a MacroVector class — one of 270 expert-ranked equivalence groups (FIRST, 2024). A MacroVector is identified by six equivalence-group indices EQ1–EQ6. The 270 classes collapse 104,976 ordered Base metric combinations (4×2×2×3×3×3^6); full CVSS v4.0 vector space is far larger (~15M vectors) when Threat and Environmental groups vary.",
+            "MacroVector. CVSS v4.0 assigns every valid vector a MacroVector class — one of 270 expert-ranked equivalence groups (FIRST, 2024). A MacroVector is identified by six equivalence-group indices EQ1–EQ6. The 270 classes collapse 104,976 ordered Base metric combinations (4×2×2×3×3×3\u2076); full CVSS v4.0 vector space is far larger (~15M vectors) when Threat and Environmental groups vary.",
             True,
         ),
         (
             "Environmental metrics adjust severity for a specific deployment. AIVSS uses environmental metrics when computing CVSS-BTE but does not require organizational modifiers for conformance Level 1.",
-            "Environmental metrics adjust severity for a specific deployment. CVSS v4.0 defines Base (B), Threat (BT), and Environmental (BE) groups; CVSS-BTE is Base + Threat + Environmental without organizational Security Requirements (Modified Base / Modified Threat / Modified Environmental / CR / IR / AR). AIVSS-P is separate from CVSS environmental tailoring. Level 1 conformance does not require organizational modifiers.",
+            "Environmental metrics adjust severity for a specific deployment. In CVSS v4.0, the Environmental metric group includes Modified Base, Modified Threat, Modified Environmental, and Security Requirements (CR, IR, AR) — assessors MUST NOT treat Environmental as a stripped subset that omits Security Requirements. CVSS-BTE is the score from Base + Threat + Environmental groups present in the vector (including Exploit Maturity E from Threat). Level 1 conformance does not require assessors to supply organizational modifiers; omitted values default per FIRST rules. AIVSS-P is an organization-internal priority index (Section 16) and MUST NOT be conflated with CVSS Environmental tailoring.",
             True,
         ),
         (

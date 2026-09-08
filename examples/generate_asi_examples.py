@@ -33,8 +33,6 @@ def main() -> None:
                 "aivss_vector": report["agentic_ai_profile"]["vector"],
                 "mode1_aivss": report["scores"]["mode1_interpretation"]["aivss"],
                 "mode1_status": report["scores"]["mode1_interpretation"]["status"],
-                "candidate_aivss": report["scores"]["candidate_adjusted"]["aivss"],
-                "candidate_status": report["scores"]["candidate_adjusted"]["status"],
                 "agentic_effect_class": report["agentic_ai_profile"][
                     "agentic_effect_class"
                 ],

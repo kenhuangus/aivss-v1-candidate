@@ -46,7 +46,6 @@ function renderCards(data) {
   const sorted = [...data].sort((a, b) => {
     if (key === "asi") return a.asi.localeCompare(b.asi);
     if (key === "class") return a.agentic_effect_class.localeCompare(b.agentic_effect_class);
-    if (key === "candidate") return (b.candidate_aivss ?? -1) - (a.candidate_aivss ?? -1);
     return (b.mode1_aivss ?? -1) - (a.mode1_aivss ?? -1);
   });
 
@@ -62,15 +61,10 @@ function renderCards(data) {
           <h3 class="card-name">${row.name}</h3>
           <p class="card-desc">${row.title}</p>
           <div class="score-row">
-            <div class="score-box">
-              <div class="score-label">Mode 1 · CVSS-BTE</div>
+            <div class="score-box score-box-full">
+              <div class="score-label">AIVSS · CVSS-BTE</div>
               <div class="score-value mode1">${formatScore(row.mode1_aivss)}</div>
               <div class="bar"><span style="width:${scoreWidth(row.mode1_aivss)}"></span></div>
-            </div>
-            <div class="score-box">
-              <div class="score-label">Candidate adjusted</div>
-              <div class="score-value candidate">${formatScore(row.candidate_aivss)}</div>
-              <div class="bar"><span style="width:${scoreWidth(row.candidate_aivss)}"></span></div>
             </div>
           </div>
           <div class="timeline">
@@ -125,8 +119,7 @@ async function showDetail(asi) {
     return;
   }
 
-  const mode1 = report.scores.mode1_interpretation?.aivss;
-  const candidate = report.scores.candidate_adjusted?.aivss;
+  const aivss = report.scores.mode1_interpretation?.aivss;
   const effectClass = report.agentic_ai_profile?.agentic_effect_class ?? "—";
   const ssvc = report.decision?.ssvc;
   const decision = report.decision ?? {};
@@ -134,8 +127,7 @@ async function showDetail(asi) {
 
   detailBody.innerHTML = `
     <div class="detail-meta">
-      <span><strong>Mode 1:</strong> ${formatScore(mode1)}</span>
-      <span><strong>Candidate:</strong> ${formatScore(candidate)}</span>
+      <span><strong>AIVSS (CVSS-BTE):</strong> ${formatScore(aivss)}</span>
       <span><strong>Effect class:</strong> ${effectClass}</span>
       <span><strong>BOD analogy:</strong> ${bodLabel}</span>
       ${

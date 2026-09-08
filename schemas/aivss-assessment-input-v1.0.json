@@ -90,7 +90,6 @@
     "vulnrichment_technical_impact": {"enum": ["partial", "total"]},
     "include_decision": {"type": "boolean"},
     "include_priority": {"type": "boolean"},
-    "include_experimental_mode2": {"type": "boolean"},
     "org_context": {
       "type": "object",
       "additionalProperties": false,
