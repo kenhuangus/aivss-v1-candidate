@@ -1,7 +1,8 @@
 """The eight-metric AIVSS Agentic AI profile.
 
-LC, CP, AP, and SR classify agentic effect. EX, PT, CA, and TD feed an
-explicitly experimental adjustment. Every conformant profile records all eight.
+LC, CP, AP, and SR classify agentic effect. EX, PT, CA, and TD record
+descriptive assurance deficits on the exploitation path. Every conformant
+profile records all eight metrics.
 
 The class is an ordinal label, not a cardinal score.
 """
@@ -9,14 +10,13 @@ The class is an ordinal label, not a cardinal score.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 from typing import Any
 
 from .versions import EXTENSION_VECTOR_VERSION
 
 AIVSS_EXTENSION_VERSION = EXTENSION_VECTOR_VERSION
 AIVSS_EXTENSION_PREFIX = f"AIVSS:{AIVSS_EXTENSION_VERSION}"
-ADJUSTMENT_STATUS = "experimental-uncalibrated"
 EFFECT_CLASS_STATUS = "candidate-unvalidated"
 UNKNOWN_VALUE = "X"
 
@@ -197,88 +197,6 @@ TD_VALUES: dict[str, tuple[str, str]] = {
     ),
 }
 
-EX_RISK_DELTA: dict[str, Decimal | None] = {
-    "W": Decimal("0.4"),
-    "M": Decimal("0.15"),
-    "N": Decimal("0.0"),
-    "X": None,
-}
-PT_RISK_DELTA: dict[str, Decimal | None] = {
-    "H": Decimal("0.3"),
-    "M": Decimal("0.1"),
-    "L": Decimal("0.0"),
-    "X": None,
-}
-CA_RISK_DELTA: dict[str, Decimal | None] = {
-    "W": Decimal("0.3"),
-    "M": Decimal("0.1"),
-    "N": Decimal("0.0"),
-    "X": None,
-}
-TD_RISK_DELTA: dict[str, Decimal | None] = {
-    "H": Decimal("0.5"),
-    "M": Decimal("0.2"),
-    "L": Decimal("0.0"),
-    "X": None,
-}
-
-ADJUSTMENT_RISK_DELTAS: dict[str, dict[str, Decimal | None]] = {
-    "EX": EX_RISK_DELTA,
-    "PT": PT_RISK_DELTA,
-    "CA": CA_RISK_DELTA,
-    "TD": TD_RISK_DELTA,
-}
-
-
-def _risk_delta(metric: str, value: str) -> Decimal:
-    table = ADJUSTMENT_RISK_DELTAS[metric]
-    if value not in table:
-        raise ValueError(
-            f"Illegal value {value!r} for Agentic AI metric {metric!r}; "
-            f"expected one of {sorted(table)}"
-        )
-    delta = table[value]
-    if delta is None:
-        raise ValueError(f"Cannot calculate a score while {metric}:X is unresolved")
-    return delta
-
-
-def ex_risk_delta(ex: str) -> float:
-    return float(_risk_delta("EX", ex))
-
-
-def pt_risk_delta(pt: str) -> float:
-    return float(_risk_delta("PT", pt))
-
-
-def ca_risk_delta(ca: str) -> float:
-    return float(_risk_delta("CA", ca))
-
-
-def td_risk_delta(td: str) -> float:
-    return float(_risk_delta("TD", td))
-
-
-def agentic_risk_delta(*, ex: str, pt: str, ca: str, td: str) -> float:
-    """Exact candidate adjustment. The weights are explicitly uncalibrated."""
-    return float(
-        _risk_delta("EX", ex)
-        + _risk_delta("PT", pt)
-        + _risk_delta("CA", ca)
-        + _risk_delta("TD", td)
-    )
-
-
-@dataclass(frozen=True)
-class CandidateAdjustment:
-    """Transparent result for the uncalibrated additive candidate model."""
-
-    value: float
-    raw_value: float
-    delta: float
-    capped: bool
-
-
 @dataclass(frozen=True)
 class SRClassification:
     """Reproducible result of the empirical SR decision rule."""
@@ -417,66 +335,7 @@ def classify_td(
     return "M"
 
 
-def _validated_base_score(score: int | float | Decimal) -> Decimal:
-    if isinstance(score, bool) or not isinstance(score, (int, float, Decimal)):
-        raise ValueError(
-            f"score must be a finite decimal in [0.0, 10.0]; got {score!r}"
-        )
-    try:
-        base = Decimal(str(score))
-    except Exception as exc:
-        raise ValueError(
-            f"score must be a finite decimal in [0.0, 10.0]; got {score!r}"
-        ) from exc
-    if not base.is_finite() or not Decimal("0.0") <= base <= Decimal("10.0"):
-        raise ValueError(f"score must be in [0.0, 10.0]; got {score!r}")
-    if base != base.quantize(Decimal("0.1")):
-        raise ValueError(f"score must have at most one decimal place; got {score!r}")
-    return base
-
-
-def candidate_adjustment(
-    score: int | float | Decimal, *, ex: str, pt: str, ca: str, td: str
-) -> CandidateAdjustment:
-    base = _validated_base_score(score)
-    delta = (
-        _risk_delta("EX", ex)
-        + _risk_delta("PT", pt)
-        + _risk_delta("CA", ca)
-        + _risk_delta("TD", td)
-    )
-    raw = Decimal("0.0") if base == 0 else base + delta
-    capped = raw > Decimal("10.0")
-    value = min(Decimal("10.0"), raw).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
-    return CandidateAdjustment(
-        value=float(value),
-        raw_value=float(raw),
-        delta=float(delta),
-        capped=capped,
-    )
-
-
-def apply_agentic_risk(
-    score: int | float | Decimal, *, ex: str, pt: str, ca: str, td: str
-) -> float:
-    """Apply the experimental adjustment with exact decimal half-up rounding.
-
-    A zero-impact CVSS result remains zero: assurance deficits do not create a
-    vulnerability impact where CVSS records none.
-    """
-    return candidate_adjustment(score, ex=ex, pt=pt, ca=ca, td=td).value
-
-
-def apply_td_risk(score: int | float | Decimal, td: str) -> float:
-    """Backward-compatible TD-only adjustment."""
-    base = _validated_base_score(score)
-    if base == 0:
-        return 0.0
-    value = min(Decimal("10.0"), base + _risk_delta("TD", td))
-    return float(value.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
-
-
-ADJUSTMENT_AGENTIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
+ASSURANCE_AGENTIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     "EX": EX_VALUES,
     "PT": PT_VALUES,
     "CA": CA_VALUES,
@@ -490,9 +349,11 @@ CLASSIFYING_AGENTIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     "SR": SR_VALUES,
 }
 
+ADJUSTMENT_AGENTIC_METRICS = ASSURANCE_AGENTIC_METRICS
+
 AGENTIC_METRICS: dict[str, dict[str, tuple[str, str]]] = {
     **CLASSIFYING_AGENTIC_METRICS,
-    **ADJUSTMENT_AGENTIC_METRICS,
+    **ASSURANCE_AGENTIC_METRICS,
 }
 
 AI_METRICS = AGENTIC_METRICS
@@ -539,10 +400,10 @@ class AIProfile:
             ("CA", self.ca),
             ("TD", self.td),
         ):
-            if value not in ADJUSTMENT_AGENTIC_METRICS[name]:
+            if value not in ASSURANCE_AGENTIC_METRICS[name]:
                 raise ValueError(
                     f"Illegal value {value!r} for Agentic AI metric {name!r}; "
-                    f"expected one of {sorted(ADJUSTMENT_AGENTIC_METRICS[name])}"
+                    f"expected one of {sorted(ASSURANCE_AGENTIC_METRICS[name])}"
                 )
 
     @property
@@ -726,7 +587,9 @@ def parse_aivss_vector(vector: str) -> AIProfile:
             raise ValueError(f"Malformed AIVSS metric segment {part!r}")
         key, _, value = part.partition(":")
         if key == "TA":
-            key = "TD"
+            raise ValueError(
+                "AIVSS metric 'TA' is withdrawn; use TD (Traceability Deficit)"
+            )
         if key not in AGENTIC_METRICS:
             raise ValueError(f"Unknown AIVSS metric {key!r}")
         if key in found:

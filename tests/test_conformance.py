@@ -16,7 +16,6 @@ from aivss_calc.ai_metrics import (
     AGENTIC_METRIC_ORDER,
     AGENTIC_METRICS,
     AIProfile,
-    candidate_adjustment,
     parse_aivss_vector,
 )
 from aivss_calc.cli import main
@@ -28,7 +27,6 @@ from aivss_calc.versions import (
     REPORT_SCHEMA_VERSION,
     RUBRIC_VERSION,
     SPEC_VERSION,
-    WEIGHT_SET_ID,
 )
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -52,10 +50,7 @@ def test_versions_are_consistent_across_package_and_schemas():
         report_schema["properties"]["report_schema_version"]["const"]
         == REPORT_SCHEMA_VERSION
     )
-    assert (
-        report_schema["$defs"]["candidateScore"]["properties"]["weight_set"]["const"]
-        == WEIGHT_SET_ID
-    )
+    assert report_schema["$defs"]["scores"]["required"] == ["mode1_interpretation"]
     assert manifest["version"] == EXTENSION_VECTOR_VERSION
     assert manifest["vector_prefix"] == AIVSS_EXTENSION_PREFIX
     assert manifest["metric_order"] == list(AGENTIC_METRIC_ORDER)
@@ -85,7 +80,7 @@ def test_all_metric_combinations_have_deterministic_completeness_and_class():
             assert profile.effect_class() == "AX"
 
 
-def test_unknown_value_withholds_candidate_score():
+def test_unknown_classifying_metric_yields_ax():
     vector = "AIVSS:1.0/LC:X/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
     report = assess(
         Assessment(
@@ -105,10 +100,9 @@ def test_unknown_value_withholds_candidate_score():
             provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
         )
     )
-    candidate = report["scores"]["candidate_adjusted"]
-    assert candidate["status"] == "incomplete"
-    assert candidate["aivss"] is None
-    assert candidate["zero_impact_invariant_applied"] is None
+    mode1 = report["scores"]["mode1_interpretation"]
+    assert mode1["aivss"] == mode1["cvss_bte"]
+    assert mode1["status"] == "normative"
     assert report["agentic_ai_profile"]["agentic_effect_class"] == "AX"
     assert (
         report["agentic_ai_profile"]["agentic_effect_class_status"]
@@ -117,21 +111,11 @@ def test_unknown_value_withholds_candidate_score():
     validate_report(report)
 
 
-def test_zero_impact_and_cap_are_explicit():
-    zero = candidate_adjustment(0.0, ex="W", pt="H", ca="W", td="H")
-    capped = candidate_adjustment(9.8, ex="W", pt="H", ca="W", td="H")
-    assert zero.value == zero.raw_value == 0.0
-    assert zero.capped is False
-    assert capped.raw_value == 11.3
-    assert capped.value == 10.0
-    assert capped.capped is True
-
-
 def test_semantic_validator_rejects_tampered_score():
     report = assess(assessment_from_payload(scenario_payload("ASI01")))
     tampered = copy.deepcopy(report)
-    tampered["scores"]["candidate_adjusted"]["aivss"] = 1.0
-    with pytest.raises(ValueError, match="aivss does not match"):
+    tampered["scores"]["mode1_interpretation"]["aivss"] = 1.0
+    with pytest.raises(ValueError, match="mode1_interpretation"):
         validate_report(tampered)
 
 
@@ -185,18 +169,8 @@ def test_cli_accepts_separate_extension_vector(capsys):
     output = json.loads(capsys.readouterr().out)
     assert output["cvss_vector"] == CVSS
     assert output["aivss_vector"] == vector
-    assert output["status"] == "experimental-uncalibrated"
-
-
-def test_lookup_output_separates_macrovector_and_adjustment_deltas(capsys):
-    vector = "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
-    assert main(["lookup", CVSS, "--aivss-vector", vector]) == 0
-    output = json.loads(capsys.readouterr().out)
-    assert "delta" not in output
-    assert output["total_delta"] == pytest.approx(
-        output["aivss_btea"] - output["cvss_bte"], abs=0.05
-    )
-    assert output["candidate_adjustment_delta"] == 1.3
+    assert output["status"] == "normative"
+    assert output["aivss"] == output["cvss_bte"]
 
 
 def test_extension_parser_rejects_out_of_order_metrics():

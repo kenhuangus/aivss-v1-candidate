@@ -5,14 +5,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from decimal import Decimal, ROUND_HALF_UP
 from itertools import product
 from pathlib import Path
 from typing import Any
 
 from . import __version__
 from .ai_metrics import (
-    ADJUSTMENT_STATUS,
     AI_METRICS,
     AIProfile,
     AGENTIC_METRIC_ORDER,
@@ -20,35 +18,24 @@ from .ai_metrics import (
     ADJUSTMENT_AGENTIC_METRICS,
     CLASSIFYING_AGENTIC_METRICS,
     EFFECT_CLASS_STATUS,
-    candidate_adjustment,
-    ca_risk_delta,
-    ex_risk_delta,
     parse_aivss_vector,
-    pt_risk_delta,
     split_ai_vector,
-    td_risk_delta,
 )
-from .assessment import assess, assessment_from_payload, identity_holds
-from .cvss_score import round_half_up, score_cvss_bte
+from .assessment import assess, assessment_from_payload
+from .cvss_score import score_cvss_bte
 from .decision import BOD_2604_TABLE, ExploitationEvidence, decide
 from .demo_server import run_demo
 from .legacy import score_legacy
-from .macrovector import (
-    _lookup_table,
-    lookup_aivss,
-    macrovector,
-    parse_cvss_vector,
-    promote,
-)
+from .macrovector import _lookup_table, macrovector, parse_cvss_vector
 from .priority import compute_priority
 from .scenarios import SCENARIOS, scenario_payload
 from .taxonomy import ASI_TOP_10
 from .validation import validate_assessment_input, validate_report
-from .versions import RUBRIC_VERSION, WEIGHT_SET_ID
+from .versions import RUBRIC_VERSION
 
-ADJUSTMENT_METRICS = ("EX", "PT", "CA", "TD")
+ASSURANCE_METRICS = ("EX", "PT", "CA", "TD")
 CLASSIFYING_METRICS = ("LC", "CP", "AP", "SR")
-ALL_AGENTIC_METRICS = CLASSIFYING_METRICS + ADJUSTMENT_METRICS
+ALL_AGENTIC_METRICS = CLASSIFYING_METRICS + ASSURANCE_METRICS
 
 
 def _emit(payload: Any, pretty: bool = True) -> None:
@@ -134,71 +121,24 @@ def cmd_profile(args: argparse.Namespace) -> int:
     metrics = parse_cvss_vector(cvss_only)
     mv = macrovector(metrics)
     score = score_cvss_bte(cvss_only)
-    adjustment = (
-        candidate_adjustment(
-            score, ex=profile.ex, pt=profile.pt, ca=profile.ca, td=profile.td
-        )
-        if profile.complete
-        else None
-    )
     payload: dict[str, Any] = {
         "mode": "interpretation",
-        "status": ADJUSTMENT_STATUS if adjustment else "incomplete",
+        "status": "normative",
         "cvss_vector": cvss_only,
         "aivss_vector": profile.to_vector(),
         "macrovector": mv,
         "cvss_bte": score,
-        "ex_delta": ex_risk_delta(profile.ex) if adjustment else None,
-        "pt_delta": pt_risk_delta(profile.pt) if adjustment else None,
-        "ca_delta": ca_risk_delta(profile.ca) if adjustment else None,
-        "td_delta": td_risk_delta(profile.td) if adjustment else None,
-        "agentic_risk_delta": adjustment.delta if adjustment else None,
-        "raw_aivss": adjustment.raw_value if adjustment else None,
-        "aivss": adjustment.value if adjustment else None,
-        "capped": adjustment.capped if adjustment else None,
-        "weight_set": WEIGHT_SET_ID,
-        "calibration_status": "not empirically calibrated",
+        "aivss": score,
         "note": (
-            "Candidate score only. A zero-impact CVSS result remains zero; "
-            "LC/CP/AP/SR determine the ordinal Agentic Effect Class."
+            "Normative AIVSS severity equals CVSS-BTE. "
+            "LC/CP/AP/SR determine the ordinal Agentic Effect Class; "
+            "EX/PT/CA/TD are descriptive profile metadata."
         ),
         "agentic_ai_profile": profile.describe(),
         "agentic_effect_class": profile.agentic_effect_class(),
         "agentic_effect_class_status": EFFECT_CLASS_STATUS,
     }
     _emit(payload)
-    return 0
-
-
-def cmd_lookup(args: argparse.Namespace) -> int:
-    cvss_only, embedded = split_ai_vector(args.vector)
-    profile = _resolve_profile(args, embedded)
-    if profile is None:
-        raise ValueError(
-            "lookup requires an Agentic AI metric group in the vector or via flags"
-        )
-    if not profile.complete:
-        raise ValueError("lookup cannot run while any AIVSS metric is X")
-    metrics = parse_cvss_vector(cvss_only)
-    result = lookup_aivss(cvss_only, metrics, profile.effect_class())
-    adjusted = candidate_adjustment(
-        result["aivss_btea"],
-        ex=profile.ex,
-        pt=profile.pt,
-        ca=profile.ca,
-        td=profile.td,
-    )
-    macrovector_delta = result.pop("delta")
-    result["aivss_btea_before_adjustment"] = result["aivss_btea"]
-    result["aivss_btea"] = adjusted.value
-    result["raw_aivss_btea"] = adjusted.raw_value
-    result["macrovector_delta"] = macrovector_delta
-    result["candidate_adjustment_delta"] = adjusted.delta
-    result["total_delta"] = round_half_up(adjusted.value - result["cvss_bte"], 1)
-    result["capped"] = adjusted.capped
-    result["status"] = "experimental-uncalibrated"
-    result["generator"] = "S2 equivalence-class promotion"
-    _emit(result)
     return 0
 
 
@@ -272,56 +212,6 @@ def cmd_legacy(args: argparse.Namespace) -> int:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     table = _lookup_table()
-    regressions = []
-    identity_failures = []
-    sample_vectors = [
-        "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P",
-        "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N/E:U",
-    ]
-    for vector in sample_vectors:
-        if not identity_holds(vector):
-            identity_failures.append(vector)
-
-    for mv in table:
-        for cls in ("A1", "A2"):
-            promoted = promote(mv, cls)
-            if promoted == mv:
-                continue
-            if table[promoted] < table[mv]:
-                regressions.append((mv, cls))
-
-    rounding_failures = 0
-    exact_deltas = {
-        "EX": {"W": "0.4", "M": "0.15", "N": "0.0"},
-        "PT": {"H": "0.3", "M": "0.1", "L": "0.0"},
-        "CA": {"W": "0.3", "M": "0.1", "N": "0.0"},
-        "TD": {"H": "0.5", "M": "0.2", "L": "0.0"},
-    }
-    for tenth in range(101):
-        base = Decimal(tenth) / Decimal(10)
-        for ex, pt, ca, td in product(
-            exact_deltas["EX"],
-            exact_deltas["PT"],
-            exact_deltas["CA"],
-            exact_deltas["TD"],
-        ):
-            delta = sum(
-                (
-                    Decimal(exact_deltas["EX"][ex]),
-                    Decimal(exact_deltas["PT"][pt]),
-                    Decimal(exact_deltas["CA"][ca]),
-                    Decimal(exact_deltas["TD"][td]),
-                ),
-                Decimal("0"),
-            )
-            raw = Decimal("0") if base == 0 else base + delta
-            expected = min(Decimal("10"), raw).quantize(
-                Decimal("0.1"), rounding=ROUND_HALF_UP
-            )
-            actual = candidate_adjustment(float(base), ex=ex, pt=pt, ca=ca, td=td)
-            if Decimal(str(actual.value)) != expected:
-                rounding_failures += 1
-
     example_failures: list[str] = []
     source_root = Path(__file__).resolve().parent.parent
     examples_dir = source_root / "examples"
@@ -350,30 +240,15 @@ def cmd_verify(args: argparse.Namespace) -> int:
         )
     }
     bod_table_complete = set(BOD_2604_TABLE) == expected_bod_keys
-    passed = (
-        not identity_failures
-        and not regressions
-        and not rounding_failures
-        and not example_failures
-        and bod_table_complete
-    )
+    passed = not example_failures and bod_table_complete
     _emit(
         {
             "passed": passed,
             "macrovectors": len(table),
-            "identity_rule_sample_failures": identity_failures,
-            "identity_rule_sample_passed": not identity_failures,
-            "macrovector_promotion_violations": len(regressions),
-            "exact_rounding_combinations": 101 * 3**4,
-            "exact_rounding_failures": rounding_failures,
             "bod_2604_table_rows": len(BOD_2604_TABLE),
             "bod_2604_table_complete": bod_table_complete,
             "validated_scenarios": len(SCENARIOS) - len(example_failures),
             "scenario_failures": example_failures,
-            "saturated_no_op": {
-                "A1": sum(1 for mv in table if promote(mv, "A1") == mv),
-                "A2": sum(1 for mv in table if promote(mv, "A2") == mv),
-            },
         }
     )
     return 0 if passed else 1
@@ -397,7 +272,7 @@ def cmd_rubric(args: argparse.Namespace) -> int:
             "rubric_version": RUBRIC_VERSION,
             "reference": "docs/METRIC-RUBRIC.md",
             "classifying_metrics": list(CLASSIFYING_AGENTIC_METRICS),
-            "adjustment_metrics": list(ADJUSTMENT_AGENTIC_METRICS),
+            "assurance_metrics": list(ADJUSTMENT_AGENTIC_METRICS),
             "metrics": metrics,
         }
     )
@@ -421,12 +296,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--aivss-vector")
     _add_ai_metric_flags(p)
     p.set_defaults(func=cmd_profile)
-
-    p = sub.add_parser("lookup")
-    p.add_argument("vector")
-    p.add_argument("--aivss-vector")
-    _add_ai_metric_flags(p)
-    p.set_defaults(func=cmd_lookup)
 
     p = sub.add_parser("decide")
     p.add_argument("--vector")

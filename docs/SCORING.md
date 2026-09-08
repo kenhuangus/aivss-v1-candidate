@@ -11,9 +11,11 @@ the worst value of each metric from different paths and combine them into a
 synthetic profile. Score materially different paths separately and retain a
 stable `path_id`.
 
-All eight metrics are required. Use `X` when evidence cannot resolve a metric.
-Any `X` makes the profile incomplete, produces effect class `AX` when a
-classifying metric is unknown, and withholds numeric candidate outputs.
+All eight metrics are required when the Agentic AI Profile is present.
+Omit the profile entirely when it is not assessed; a missing profile is not
+A0. Use `X` when evidence cannot resolve a metric that is present.
+Any `X` makes the profile incomplete and produces effect class `AX` when a
+classifying metric is unknown.
 
 ## Agentic Effect Class
 
@@ -24,8 +26,8 @@ LC, CP, AP, and SR determine an ordinal class:
 3. `A0` if `LC:N + CP:N + AP:N + SR:U`.
 4. `A1` otherwise.
 
-EX, PT, CA, and TD do not affect this class. This prevents one factor from
-being counted once in class promotion and again as an additive adjustment.
+EX, PT, CA, and TD do not affect this class. They are descriptive assurance
+metadata on the exploitation path and do not modify the severity number.
 `A0` means “no class-based promotion”; it does not mean “no agentic risk.”
 Reports label the class `candidate-unvalidated`: its boundaries are explicit
 and deterministic, but have not yet passed the gates in
@@ -37,43 +39,16 @@ and deterministic, but have not yet passed the gates in
 not modify CVSS metric definitions, constants, ordering, or the official CVSS
 score. Consumers must always retain and display `cvss_bte`.
 
-## Experimental candidate adjustment
+## Normative AIVSS severity
 
-The calculator exposes this hypothesis for research and sensitivity testing:
+The normative AIVSS severity number equals CVSS-BTE:
 
 ```text
-EX = W:0.40, M:0.15, N:0.00
-PT = H:0.30, M:0.10, L:0.00
-CA = W:0.30, M:0.10, N:0.00
-TD = H:0.50, M:0.20, L:0.00
-
-delta = EX + PT + CA + TD
-raw_aivss = CVSS-BTE + delta
-aivss = round_half_up(min(10.0, raw_aivss), 1)
+aivss = cvss_bte
 ```
 
-Zero-impact invariant: if CVSS-BTE is `0.0`, `raw_aivss` and `aivss` remain
-`0.0`. Assurance deficits do not create vulnerability impact by themselves.
-
-All arithmetic uses decimal values and final half-up rounding. Reports include
-the raw value, each component, the total delta, and whether the 10.0 cap was
-reached.
-
-These weights are ordinal judgments expressed as cardinal increments. They
-have not been fitted to incident loss, expert rankings, exploit prevalence, or
-inter-rater data. Therefore the output status is always
-`experimental-uncalibrated`; it is not a normative AIVSS score. The release
-gates for changing that status are in [VALIDATION.md](VALIDATION.md).
-
-## Experimental MacroVector mapping
-
-The optional MacroVector experiment maps A1 and A2 to adjacent CVSS
-equivalence classes before applying the candidate adjustment. It is disabled
-in reports unless `include_experimental_mode2` is true.
-
-This mapping was not produced by FIRST’s CVSS expert-ranking process. It must
-not be described as a CVSS score or FIRST-endorsed result. Saturation and the
-pre-adjustment MacroVector value are reported explicitly.
+Agentic AI metrics are parallel metadata. EX, PT, CA, and TD record assurance
+deficits but do not apply numeric additive uplift to the severity number.
 
 ## Decision support
 
@@ -89,10 +64,12 @@ retain links to both the machine-readable
 [CERT/CC response model](https://certcc.github.io/SSVC/howto/cisa_response/)
 and the CISA directive.
 
-Vulnrichment values take precedence. For non-KEV CVEs with missing metadata,
-the published BOD defaults are `Automatable=no` and `Technical Impact=total`.
-KEV entries must use the metadata CISA publishes for them; the calculator does
-not silently default missing KEV data. The result is labelled a compliance
+Vulnrichment values take precedence. For non-KEV CVEs where both Automatable and
+Technical Impact are unavailable, CISA BOD 26-04 implementation guidance directs
+a 60-day timeline (not a table lookup using default no/total, which can wrongly
+yield 14 days when the asset is publicly exposed). When Publicly Exposed is
+unknown, it defaults to Yes. KEV entries must use the metadata CISA publishes
+for them; the calculator does not silently default missing KEV data. The result is labelled a compliance
 result only when `fceb_bod_2604_scope=true`; otherwise
 it is labelled informative CVE guidance because the directive does not apply
 to every organization or system.
@@ -102,9 +79,9 @@ explicitly. The table result is labelled `informative_bod_26_04_analogy`,
 `compliance_applicable=false`, and is not a regulatory deadline. AIVSS never
 derives these inputs from SR or CVSS.
 
-The candidate overlay advances at most one timeline tier if `A2` or `TD:H`.
-Triggers do not stack. It never creates a forensic-triage obligation and never
-removes one: a CISA `3DF` result remains `3DF`.
+The candidate overlay advances at most one timeline tier when the Agentic AI
+Effect Class is `A2`. Triggers do not stack. It never creates a forensic-triage
+obligation and never removes one: a CISA `3DF` result remains `3DF`.
 
 See the official
 [BOD 26-04 directive](https://www.cisa.gov/news-events/directives/bod-26-04-prioritizing-security-updates-based-risk)

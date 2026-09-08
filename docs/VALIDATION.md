@@ -5,18 +5,21 @@
 The repository currently supports these claims:
 
 1. CVSS v4.0 inputs remain separate and independently reproducible.
-2. Every AIVSS report records all eight metrics, one coherent path, and
-   evidence per metric.
-3. Unknown evidence is represented explicitly and suppresses candidate scores.
-4. Effect-class and arithmetic algorithms are deterministic, exact, and
-   exhaustively tested over their finite input domains.
-5. CISA BOD 26-04 compliance results are separated from non-CVE analogies and
+2. When the Agentic AI Profile is present, every report records all eight
+   metrics, one coherent path, and evidence per metric. The profile may be
+   omitted; a missing profile is not A0 and does not assert an effect class.
+3. Unknown classifying evidence is represented explicitly as effect class `AX`.
+4. Effect-class algorithms are deterministic, exact, and exhaustively tested
+   over their finite input domains.
+5. Normative AIVSS severity equals CVSS-BTE; assurance metrics are
+   descriptive metadata only.
+6. CISA BOD 26-04 compliance results are separated from non-CVE analogies and
    from the AIVSS overlay.
-6. A forensic-triage requirement is never removed by the overlay.
+7. A forensic-triage requirement is never removed by the overlay.
 
-The repository does **not** yet support claims that the candidate weights,
-effect-class boundaries, MacroVector mapping, remediation overlay, or priority
-bands predict loss, exploitation, or optimal remediation decisions.
+The repository does **not** yet support claims that the candidate
+effect-class boundaries, remediation overlay, or priority bands predict loss,
+exploitation, or optimal remediation decisions.
 
 ## Candidate hypotheses
 
@@ -26,13 +29,31 @@ validity:
 | Output | Current status |
 |---|---|
 | A0/A1/A2 effect-class boundaries | candidate-unvalidated |
-| EX/PT/CA/TD additive adjustment | experimental-uncalibrated |
-| A1/A2 MacroVector promotion | experimental-uncalibrated; disabled by default |
-| A2 or TD:H remediation acceleration | experimental-uncalibrated |
+| A2 remediation acceleration | experimental-uncalibrated |
 | AIVSS-P portfolio order | organization-local-uncalibrated |
 
 Reports expose these statuses in machine-readable fields. Documentation,
 examples, and CLI output must use the same labels.
+
+## Synthetic fixtures and AIVSS-P (Phase 6)
+
+Worked examples under `examples/` are **synthetic reference fixtures** generated
+from the scenario catalog. They illustrate Mode 1 scoring paths only; they are
+not field measurements or loss estimates.
+
+AIVSS-P (Level 3) is an organization-internal priority index. It is **not**
+monetary loss. Unknown likelihood, reach, or criticality MUST be recorded as
+unknown (`X`) and excluded from the numeric index — unknown is not zero.
+Organizations MUST publish their qualitative→numeric mapping internally before
+using band cut-points (provisional percentile bands use an artificial uniform
+grid and require corpus recalibration).
+
+When AIVSS-P band conflicts with BOD baseline (e.g., Immediate vs 60D), the
+`cisa:BOD2604:1.0.0` outcome is the federal compliance obligation. Release
+gates evaluate in order; the most-restrictive applicable gate wins. Waivers
+document deployment exceptions; they are not product roadmaps. TD — not TA —
+is the traceability metric for gate conditions. Mode 2 and candidate_adjusted
+triggers are withdrawn.
 
 ## Required evidence before a stable scoring claim
 

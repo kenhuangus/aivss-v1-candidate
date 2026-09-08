@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import json
 import pathlib
-from decimal import Decimal, ROUND_HALF_UP
-from itertools import product
 
 import pytest
 
@@ -24,13 +22,11 @@ from aivss_calc import (
     assessment_from_payload,
     bod_timeline,
     compute_priority,
-    lookup_aivss,
     macrovector,
     macrovector_score,
     normalize_asi,
     parse_aivss_vector,
     parse_cvss_vector,
-    promote,
     split_ai_vector,
 )
 from aivss_calc.ai_metrics import (
@@ -38,18 +34,11 @@ from aivss_calc.ai_metrics import (
     AGENTIC_METRICS,
     ADJUSTMENT_AGENTIC_METRICS,
     CLASSIFYING_AGENTIC_METRICS,
-    agentic_risk_delta,
-    apply_agentic_risk,
-    candidate_adjustment,
-    ca_risk_delta,
     classify_sr,
-    ex_risk_delta,
-    pt_risk_delta,
-    td_risk_delta,
 )
 from aivss_calc.decision import TIMELINE_URGENCY, advance_timeline, decide, escalate
 from aivss_calc.legacy import compute_severity, factor_mean, score_legacy
-from aivss_calc.cvss_score import round_half_up, score_cvss_bte
+from aivss_calc.cvss_score import score_cvss_bte
 from aivss_calc.macrovector import _lookup_table
 from aivss_calc.taxonomy import ASI_TOP_10, V08_CATEGORY_CROSSWALK
 from aivss_calc.validation import validate_assessment_input, validate_report
@@ -60,12 +49,6 @@ SCHEMA = REPO / "schemas" / "aivss-report-v1.0.json"
 # CVSS-BTE 7.8 (interpolated), MacroVector ceiling 8.0.
 EXAMPLE_VECTOR = "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P"
 EXAMPLE_CVSS_BTE = 7.8
-EXAMPLE_EX_DELTA = 0.4
-EXAMPLE_PT_DELTA = 0.3
-EXAMPLE_CA_DELTA = 0.1
-EXAMPLE_TD_DELTA = 0.5
-EXAMPLE_AGENTIC_RISK_DELTA = 1.3
-EXAMPLE_AIVSS = 9.1
 EXAMPLE_AI = "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
 EXAMPLE_FULL = f"{EXAMPLE_VECTOR} {EXAMPLE_AI}"
 DECISION_CONTEXT = {
@@ -187,104 +170,11 @@ class TestMacroVectorTable:
         assert all(0.0 <= v <= 10.0 for v in _lookup_table().values())
 
 
-class TestIdentityRule:
-    """The experimental MacroVector mapping preserves A0 identity."""
-
-    def test_identity_holds_for_every_macrovector(self):
-        table = _lookup_table()
-        for mv, score in table.items():
-            assert promote(mv, "A0") == mv
-            assert macrovector_score(promote(mv, "A0")) == score
-
-    def test_absent_ai_metrics_yield_a0(self):
-        metrics = parse_cvss_vector(EXAMPLE_VECTOR)
-        result = lookup_aivss(EXAMPLE_VECTOR, metrics, "A0")
-        assert result["agentic_effect_class"] == "A0"
-        assert result["aivss_btea"] == EXAMPLE_CVSS_BTE
-        assert result["delta"] == 0.0
-
-    def test_agentic_risk_delta_adjusts_score(self):
-        """EX, PT, CA, and TD feed the transparent candidate adjustment."""
-        metrics = parse_cvss_vector(EXAMPLE_VECTOR)
-        base = lookup_aivss(EXAMPLE_VECTOR, metrics, "A0")["aivss_btea"]
-        cases = (
-            ("W", "H", "W", "H", 1.5),
-            ("M", "M", "M", "M", 0.55),
-            ("N", "L", "N", "L", 0.0),
-        )
-        for ex, pt, ca, td, total in cases:
-            ai = profile(ex=ex, pt=pt, ca=ca, td=td)
-            assert ai.effect_class() == "A0"
-            assert agentic_risk_delta(ex=ex, pt=pt, ca=ca, td=td) == total
-            assert apply_agentic_risk(
-                base, ex=ex, pt=pt, ca=ca, td=td
-            ) == round_half_up(min(10.0, base + total), 1)
-
-    def test_adjustment_rounding_is_exact_for_every_score_and_factor_combination(self):
-        tables = [
-            ("W", "M", "N"),
-            ("H", "M", "L"),
-            ("W", "M", "N"),
-            ("H", "M", "L"),
-        ]
-        for tenth in range(101):
-            base = Decimal(tenth) / Decimal(10)
-            for ex, pt, ca, td in product(*tables):
-                expected_delta = sum(
-                    (
-                        Decimal(str(ex_risk_delta(ex))),
-                        Decimal(str(pt_risk_delta(pt))),
-                        Decimal(str(ca_risk_delta(ca))),
-                        Decimal(str(td_risk_delta(td))),
-                    ),
-                    Decimal("0"),
-                )
-                raw = Decimal("0") if base == 0 else base + expected_delta
-                expected = min(Decimal("10"), raw).quantize(
-                    Decimal("0.1"), rounding=ROUND_HALF_UP
-                )
-                actual = candidate_adjustment(float(base), ex=ex, pt=pt, ca=ca, td=td)
-                assert Decimal(str(actual.value)) == expected
-                assert Decimal(str(actual.raw_value)) == raw
-
-    def test_candidate_score_rejects_non_numeric_input(self):
-        with pytest.raises(ValueError, match="finite decimal"):
-            candidate_adjustment("7.8", ex="N", pt="L", ca="N", td="L")
-
+class TestCvssBte:
     def test_interpolated_score_differs_from_macrovector_ceiling(self):
         metrics = parse_cvss_vector(EXAMPLE_VECTOR)
         assert score_cvss_bte(EXAMPLE_VECTOR) == EXAMPLE_CVSS_BTE
         assert macrovector_score(macrovector(metrics)) == 8.0
-
-
-class TestPromotion:
-    def test_promotion_never_lowers_the_score(self):
-        table = _lookup_table()
-        for mv, score in table.items():
-            for cls in ("A0", "A1", "A2"):
-                assert macrovector_score(promote(mv, cls)) >= score
-
-    def test_promoted_macrovector_always_exists(self):
-        table = _lookup_table()
-        for mv in table:
-            for cls in ("A0", "A1", "A2"):
-                assert promote(mv, cls) in table
-
-    def test_a2_is_at_least_a1(self):
-        table = _lookup_table()
-        for mv in table:
-            assert macrovector_score(promote(mv, "A2")) >= macrovector_score(
-                promote(mv, "A1")
-            )
-
-    def test_promotion_is_bounded_by_ten(self):
-        assert all(
-            macrovector_score(promote(mv, "A2")) <= 10.0 for mv in _lookup_table()
-        )
-
-    def test_unknown_class_rejected(self):
-        with pytest.raises(ValueError, match="Unknown Agentic Effect Class"):
-            promote("000000", "A3")
 
 
 class TestAIEffectClass:
@@ -304,7 +194,7 @@ class TestAIEffectClass:
     def test_a2_conditions(self, kwargs):
         assert profile(**kwargs).effect_class() == "A2"
 
-    def test_adjustment_metrics_do_not_promote_effect_class(self):
+    def test_assurance_metrics_do_not_promote_effect_class(self):
         assert profile(lc="I", ex="W").effect_class() == "A1"
         assert profile(pt="H", ex="M").effect_class() == "A0"
         assert profile(sr="R", ca="W").effect_class() == "A1"
@@ -405,7 +295,7 @@ class TestMetricPartitions:
     def test_eight_metrics_in_fixed_order(self):
         assert AGENTIC_METRIC_ORDER == ("LC", "CP", "AP", "SR", "EX", "PT", "CA", "TD")
 
-    def test_classifying_and_adjustment_partition_the_eight(self):
+    def test_classifying_and_assurance_partition_the_eight(self):
         assert set(CLASSIFYING_AGENTIC_METRICS) | set(
             ADJUSTMENT_AGENTIC_METRICS
         ) == set(AGENTIC_METRIC_ORDER)
@@ -415,7 +305,7 @@ class TestMetricPartitions:
     def test_value_set_size(self, name, count):
         assert len(AGENTIC_METRICS[name]) == count
 
-    def test_every_adjustment_value_parses_in_profile(self):
+    def test_every_assurance_value_parses_in_profile(self):
         for ex in AGENTIC_METRICS["EX"]:
             for pt in AGENTIC_METRICS["PT"]:
                 for ca in AGENTIC_METRICS["CA"]:
@@ -709,21 +599,39 @@ class TestEvidenceLadder:
                 agentic_effect_class="A0",
             )
 
-    def test_cve_uses_bod_defaults_when_metadata_is_missing(self):
+    def test_cve_missing_metadata_faq_yields_60d(self):
+        """Non-KEV CVE with both Automatable and TI missing → 60D per CISA FAQ."""
         result = decide(
             evidence=ExploitationEvidence(cisa_kev=False),
             publicly_exposed=True,
             **DECISION_CONTEXT,
             agentic_effect_class="A0",
+            td="M",
             cve_id="CVE-2024-0001",
         )
-        assert result["decision_points"]["automatable"] is False
-        assert (
-            result["decision_points"]["automatable_source"] == "BOD 26-04 default (no)"
+        assert result["missing_metadata_faq_applied"] is True
+        assert result["decision_points"]["automatable_source"] == (
+            "CISA BOD 26-04 FAQ (missing metadata)"
         )
-        assert result["decision_points"]["technical_impact"] == "total"
+        assert result["decision_points"]["technical_impact_source"] == (
+            "CISA BOD 26-04 FAQ (missing metadata)"
+        )
+        assert result["bod_2604_guidance_timeline"] == "60D"
         assert result["compliance_applicable"] is False
         assert result["decision_basis"] == "informative_bod_26_04_cve_guidance"
+
+    def test_cve_missing_metadata_faq_60d_with_fceb_scope(self):
+        result = decide(
+            evidence=ExploitationEvidence(cisa_kev=False),
+            publicly_exposed=True,
+            **DECISION_CONTEXT,
+            agentic_effect_class="A0",
+            td="M",
+            cve_id="CVE-2024-0001",
+            fceb_bod_2604_scope=True,
+        )
+        assert result["bod_2604_timeline"] == "60D"
+        assert result["missing_metadata_faq_applied"] is True
 
     def test_kev_requires_published_metadata_instead_of_defaults(self):
         with pytest.raises(ValueError, match="require CISA Vulnrichment"):
@@ -939,27 +847,13 @@ class TestEndToEnd:
         defaults.update(overrides)
         return assess(Assessment(**defaults))
 
-    def test_candidate_adjustment_is_transparent(self):
+    def test_normative_severity_equals_cvss_bte(self):
         report = self._assessment()
         assert report["cvss"]["cvss_bte"] == EXAMPLE_CVSS_BTE
-        candidate = report["scores"]["candidate_adjusted"]
-        assert candidate["ex_delta"] == EXAMPLE_EX_DELTA
-        assert candidate["pt_delta"] == EXAMPLE_PT_DELTA
-        assert candidate["ca_delta"] == EXAMPLE_CA_DELTA
-        assert candidate["td_delta"] == EXAMPLE_TD_DELTA
-        assert candidate["agentic_risk_delta"] == EXAMPLE_AGENTIC_RISK_DELTA
-        assert candidate["aivss"] == EXAMPLE_AIVSS
-        assert candidate["raw_aivss"] == EXAMPLE_AIVSS
-
-    def test_macrovector_experiment_is_off_by_default(self):
-        assert "experimental_macrovector" not in self._assessment()["scores"]
-
-    def test_macrovector_experiment_is_explicitly_uncalibrated(self):
-        report = self._assessment(include_experimental_mode2=True)
-        experiment = report["scores"]["experimental_macrovector"]
-        assert experiment["aivss_btea"] == 10.0
-        assert experiment["btea_before_agentic_risk"] == 9.0
-        assert experiment["status"] == "experimental-uncalibrated"
+        mode1 = report["scores"]["mode1_interpretation"]
+        assert mode1["aivss"] == EXAMPLE_CVSS_BTE
+        assert mode1["cvss_bte"] == EXAMPLE_CVSS_BTE
+        assert mode1["status"] == "normative"
 
     def test_vectors_are_separate(self):
         report = self._assessment()
@@ -971,39 +865,47 @@ class TestEndToEnd:
         benign = "AIVSS:1.0/LC:N/CP:N/AP:N/SR:U/EX:W/PT:L/CA:N/TD:H"
         report = self._assessment(aivss_vector=benign)
         assert report["agentic_ai_profile"]["agentic_effect_class"] == "A0"
-        assert report["scores"]["candidate_adjusted"]["aivss"] == 8.7
+        assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_CVSS_BTE
 
-    def test_assess_without_profile_rejected(self):
-        with pytest.raises(ValueError, match="eight"):
-            assess(
-                Assessment(
-                    finding_id="x",
-                    path_id="x-path",
-                    cvss_vector=EXAMPLE_VECTOR,
-                    asi_category="ASI06",
-                    agentic_applicability=dict(APPLICABILITY),
-                    publicly_exposed=True,
-                )
+    def test_assess_without_profile_allowed(self):
+        report = assess(
+            Assessment(
+                finding_id="x",
+                path_id="x-path",
+                cvss_vector=EXAMPLE_VECTOR,
+                asi_category="ASI06",
+                agentic_applicability=dict(APPLICABILITY),
+                include_decision=False,
+                provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
             )
+        )
+        assert "agentic_ai_profile" not in report
+        assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_CVSS_BTE
 
     def test_priority_omitted_when_not_requested(self):
         assert "priority" not in self._assessment(include_priority=False)
 
-    def test_decision_requires_publicly_exposed(self):
-        with pytest.raises(ValueError, match="publicly_exposed"):
-            assess(
-                Assessment(
-                    finding_id="x",
-                    path_id="x-path",
-                    cvss_vector=EXAMPLE_VECTOR,
-                    aivss_vector=EXAMPLE_AI,
-                    asi_category="ASI06",
-                    agentic_applicability=dict(APPLICABILITY),
-                    metric_evidence=dict(METRIC_EVIDENCE),
-                    include_decision=True,
-                    provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
-                )
+    def test_decision_defaults_unknown_publicly_exposed_to_yes(self):
+        report = assess(
+            Assessment(
+                finding_id="x",
+                path_id="x-path",
+                cvss_vector=EXAMPLE_VECTOR,
+                aivss_vector=EXAMPLE_AI,
+                asi_category="ASI06",
+                agentic_applicability=dict(APPLICABILITY),
+                metric_evidence=dict(METRIC_EVIDENCE),
+                include_decision=True,
+                automatable=False,
+                technical_impact="partial",
+                decision_data_observed_at="2026-08-27T00:00:00Z",
+                provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
             )
+        )
+        assert report["decision"]["decision_points"]["publicly_exposed"] is True
+        assert "unknown Publicly Exposed" in report["decision"]["decision_points"][
+            "publicly_exposed_source"
+        ]
 
     def test_report_validates_against_schema(self):
         validate_report(self._assessment())
@@ -1014,4 +916,4 @@ class TestEndToEnd:
         validate_assessment_input(data)
         report = assess(assessment_from_payload(data))
         validate_report(report)
-        assert report["scores"]["candidate_adjusted"]["aivss"] == EXAMPLE_AIVSS
+        assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_CVSS_BTE

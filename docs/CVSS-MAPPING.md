@@ -29,17 +29,15 @@ formulas, constants, ordering, or scores.
 
 1. CVSS records realized technical impact. AIVSS metrics record path properties;
    do not increase CVSS impact values merely because an AIVSS value is severe.
-2. EX, PT, CA, and TD do not participate in Agentic Effect Class. This keeps
-   their experimental additive contribution from also triggering MacroVector
-   promotion.
+2. EX, PT, CA, and TD do not participate in Agentic Effect Class and do not
+   modify the normative severity number.
 3. The decision track never derives CISA Automatable from SR or Technical
    Impact from CVSS impact metrics.
 4. Each report covers one coherent exploit path. Combining metric maxima from
    unrelated paths can create a profile that no attacker can realize.
 5. Actual resource exhaustion may justify CVSS VA/SA impact while weak resource
    ceilings justify CA. Record evidence for both; they answer different
-   questions, but the uncalibrated numeric adjustment must still be interpreted
-   as experimental.
+   questions; they do not change the normative AIVSS severity number.
 
 ## Scope limits
 

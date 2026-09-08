@@ -42,9 +42,8 @@
         <span class="hero-accent">AIVSS Severity Scores</span>
       </h1>
       <p class="hero-lede">
-        Live Mode 1 severity (<code>CVSS-BTE</code>), candidate adjusted scores,
-        Agentic AI Effect Class, and SSVC-based remediation timelines for all ten
-        ASI reference scenarios.
+        Live AIVSS severity (<code>CVSS-BTE</code>), Agentic AI Effect Class,
+        and SSVC-based remediation timelines for all ten ASI reference scenarios.
       </p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="#scores">View Scores</a>
@@ -56,8 +55,7 @@
         </a>
       </div>
       <div class="hero-badges">
-        <span class="pill">Mode 1 normative</span>
-        <span class="pill pill-warn">Candidate experimental</span>
+        <span class="pill">CVSS-BTE normative</span>
         <span class="pill pill-accent">cisa:DT_BOD2604:1.0.0</span>
       </div>
     </div>
@@ -77,8 +75,7 @@
         <span class="field-label">Sort by</span>
         <select id="sort-by">
           <option value="asi">ASI ID</option>
-          <option value="mode1" selected>Mode 1 score</option>
-          <option value="candidate">Candidate score</option>
+          <option value="mode1" selected>AIVSS score</option>
           <option value="class">Effect class</option>
         </select>
       </label>
@@ -99,7 +96,7 @@
   <footer class="site-footer">
     <p>
       Reference scenarios are synthetic fixtures for format and calculation demonstration.
-      Candidate scores and timeline overlays are <strong>experimental-uncalibrated</strong>.
+      Timeline overlays are <strong>experimental-uncalibrated</strong>.
       BOD outcomes use CERT/CC SSVC decision table
       <code>cisa:DT_BOD2604:1.0.0</code>.
       AIVSS maps to the

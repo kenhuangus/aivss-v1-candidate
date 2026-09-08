@@ -316,7 +316,6 @@ def scenario_payload(
         "metric_evidence": metric_evidence,
         "include_decision": True,
         "include_priority": False,
-        "include_experimental_mode2": False,
         "provenance": {
             "assessor": "synthetic-reference-fixture",
             "assessor_kind": "imported",

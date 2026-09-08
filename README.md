@@ -5,19 +5,18 @@ Agentic AI systems. It keeps the official CVSS v4.0 vector and score intact and
 records eight Agentic AI metrics in a separate extension vector.
 
 Status: **candidate**. The metric rubric and conformance rules are testable.
-The numeric adjustment, MacroVector experiment, remediation overlay, and
-organization-local priority index are **not empirically calibrated** and must
-not be presented as standards, probabilities, or regulatory requirements.
+The remediation overlay and organization-local priority index are **not
+empirically calibrated** and must not be presented as standards, probabilities,
+or regulatory requirements.
 The [extension manifest](aivss-extension.json) records
 `first_validation_status: not-submitted`; FIRST has not validated or endorsed
 this candidate.
 
 ## Model
 
-- **Mode 1 (normative):** `AIVSS = CVSS-BTE` — agentic metrics are parallel metadata
-- **Candidate adjusted (experimental):** `min(10, CVSS-BTE + EX + PT + CA + TD)`
+- **Normative severity:** `AIVSS = CVSS-BTE` — agentic metrics are parallel metadata
 - Classifying metrics: **LC, CP, AP, SR**
-- Adjustment metrics: **EX, PT, CA, TD** (v1.0 alias: **TA** Traceability Avoidance)
+- Assurance metrics: **EX, PT, CA, TD** (Traceability Deficit)
 - Unknown evidence value: **X**
 - Effect classes: **A0, A1, A2, AX**
 
@@ -25,9 +24,10 @@ Layer 3 remediation uses CERT/CC SSVC decision table **`cisa:DT_BOD2604:1.0.0`**
 (BOD 26-04), with Agentic AI Effect Class **A2** as a fifth transparent extension
 input. See [docs/SSVC.md](docs/SSVC.md).
 
-Every assessment covers one coherent exploit path and supplies all eight
-metrics plus a rationale for each. `AX` and a withheld candidate score are
-used when evidence is insufficient.
+When the Agentic AI Profile is present, the assessment supplies all eight
+metrics plus a rationale for each. The profile may be omitted; a missing
+profile is not A0. `AX` is used when classifying evidence is insufficient
+or the profile is absent.
 
 CVSS and AIVSS vectors are separate, following the
 [CVSS v4.0 Extensions Framework](https://www.first.org/cvss/v4.0/user-guide):
@@ -41,7 +41,7 @@ AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H
 
 ```bash
 pip install -e ".[dev]"
-pytest
+pytest   # 127 tests
 aivss-calc verify
 ```
 
@@ -55,7 +55,7 @@ aivss-calc demo
 ```
 
 Launch **`aivss-calc demo`** to open the OWASP Agentic Top 10 dashboard at
-http://127.0.0.1:8765/ — Mode 1 scores, candidate scores, effect classes, and
+http://127.0.0.1:8765/ — CVSS-BTE severity scores, effect classes, and
 SSVC/BOD remediation timelines for all ten ASI reference scenarios.
 
 Live demo (GitHub Pages): https://kenhuangus.github.io/aivss-v1-candidate/

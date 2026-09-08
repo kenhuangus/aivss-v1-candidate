@@ -1,7 +1,4 @@
-"""CVSS v4.0 MacroVector derivation and an experimental AIVSS promotion.
-
-The AIVSS mapping is a candidate hypothesis, not part of CVSS and not endorsed
-or calibrated by FIRST. It is off by default in assessment reports.
+"""CVSS v4.0 MacroVector derivation.
 
 The vendored lookup table is cvss_lookup.js from the FIRST CVSS v4.0 calculator
 reference implementation (Copyright FIRST, Red Hat, and contributors;
@@ -13,8 +10,6 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from importlib import resources
-
-from .cvss_score import round_half_up, score_cvss_bte
 
 # Metric name -> ordered valid values. Order is most severe first where the
 # metric is ordinal; "X" (Not Defined) is always permitted for optional groups.
@@ -195,63 +190,3 @@ def macrovector_score(mv: str) -> float:
             "(EQ3=2 requires EQ6=1)"
         )
     return table[mv]
-
-
-# Experimental S2 promotion: which EQ index each AI Effect Class promotes
-# level. EQ1 (AV/PR/UI) and EQ4 (SC/SI/SA) are the only groups promoted, because
-# they are the two whose semantics the AI metrics actually extend, and because
-# promoting either can never violate the joint EQ3/EQ6 constraint.
-AI_CLASS_PROMOTIONS: dict[str, tuple[int, ...]] = {
-    "A0": (),
-    "A1": (3,),
-    "A2": (3, 0),
-}
-
-
-def promote(mv: str, ai_class: str) -> str:
-    """Apply the S2 equivalence-class promotion for an AI Effect Class."""
-    if ai_class not in AI_CLASS_PROMOTIONS:
-        raise ValueError(
-            f"Unknown Agentic Effect Class {ai_class!r}; expected A0, A1, or A2"
-        )
-    digits = list(mv)
-    for index in AI_CLASS_PROMOTIONS[ai_class]:
-        digits[index] = str(max(0, int(digits[index]) - 1))
-    return "".join(digits)
-
-
-def lookup_aivss(
-    cvss_vector: str,
-    metrics: dict[str, str],
-    ai_class: str,
-) -> dict[str, object]:
-    """Run the uncalibrated MacroVector experiment.
-
-    A0 satisfies the identity rule against the interpolated CVSS-BTE for this
-    vector. A1/A2 apply the expert-ranked ceiling delta from S2 promotion to
-    that interpolated base, rather than returning a promoted MacroVector ceiling
-    that ignores the vector's position within its class.
-    """
-    cvss_bte = score_cvss_bte(cvss_vector)
-    base_mv = macrovector(metrics)
-    base_ceiling = macrovector_score(base_mv)
-    promoted_mv = promote(base_mv, ai_class)
-    promoted_ceiling = macrovector_score(promoted_mv)
-
-    if ai_class == "A0":
-        aivss_btea = cvss_bte
-    else:
-        ceiling_delta = promoted_ceiling - base_ceiling
-        aivss_btea = round_half_up(min(10.0, cvss_bte + ceiling_delta), 1)
-
-    return {
-        "macrovector": base_mv,
-        "macrovector_ceiling": base_ceiling,
-        "cvss_bte": cvss_bte,
-        "agentic_effect_class": ai_class,
-        "promoted_macrovector": promoted_mv,
-        "promoted_macrovector_ceiling": promoted_ceiling,
-        "aivss_btea": aivss_btea,
-        "delta": round_half_up(aivss_btea - cvss_bte, 1),
-        "saturated": promoted_mv == base_mv and ai_class != "A0",
-    }

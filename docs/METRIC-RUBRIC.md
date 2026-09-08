@@ -17,8 +17,7 @@ Before assigning values, record:
 
 Assign exactly one value to every metric and provide a non-empty rationale.
 Use `X` for insufficient evidence. `X` is not a midpoint, benign default, or
-worst-case value, and a profile containing `X` is not eligible for a numeric
-candidate score.
+worst-case value. Unknown classifying metrics yield effect class `AX`.
 
 Apply each decision procedure from top to bottom to the same coherent path.
 If two known conditions appear to apply, choose the first. If the evidence

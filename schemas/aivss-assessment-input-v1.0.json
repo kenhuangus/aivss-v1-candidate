@@ -9,9 +9,7 @@
     "path_id",
     "risk_category",
     "cvss_vector",
-    "aivss_vector",
     "agentic_applicability",
-    "metric_evidence",
     "provenance"
   ],
   "properties": {
@@ -90,7 +88,6 @@
     "vulnrichment_technical_impact": {"enum": ["partial", "total"]},
     "include_decision": {"type": "boolean"},
     "include_priority": {"type": "boolean"},
-    "include_experimental_mode2": {"type": "boolean"},
     "org_context": {
       "type": "object",
       "additionalProperties": false,
@@ -134,14 +131,20 @@
   },
   "allOf": [
     {
+      "if": {"required": ["aivss_vector"]},
+      "then": {"required": ["metric_evidence"]}
+    },
+    {
+      "if": {"required": ["metric_evidence"]},
+      "then": {"required": ["aivss_vector"]}
+    },
+    {
       "if": {
         "required": ["include_decision"],
         "properties": {"include_decision": {"const": false}}
       },
       "else": {
         "required": [
-          "publicly_exposed",
-          "publicly_exposed_source",
           "decision_data_observed_at"
         ]
       }

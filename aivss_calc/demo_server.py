@@ -32,8 +32,6 @@ def _top10_payload() -> list[dict]:
                 "aivss_vector": report["agentic_ai_profile"]["vector"],
                 "mode1_aivss": scores["mode1_interpretation"]["aivss"],
                 "mode1_status": scores["mode1_interpretation"]["status"],
-                "candidate_aivss": scores["candidate_adjusted"]["aivss"],
-                "candidate_status": scores["candidate_adjusted"]["status"],
                 "agentic_effect_class": report["agentic_ai_profile"]["agentic_effect_class"],
                 "decision_basis": decision.get("decision_basis"),
                 "ssvc": decision.get("ssvc"),
