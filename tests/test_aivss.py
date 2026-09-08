@@ -867,37 +867,45 @@ class TestEndToEnd:
         assert report["agentic_ai_profile"]["agentic_effect_class"] == "A0"
         assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_CVSS_BTE
 
-    def test_assess_without_profile_rejected(self):
-        with pytest.raises(ValueError, match="eight"):
-            assess(
-                Assessment(
-                    finding_id="x",
-                    path_id="x-path",
-                    cvss_vector=EXAMPLE_VECTOR,
-                    asi_category="ASI06",
-                    agentic_applicability=dict(APPLICABILITY),
-                    publicly_exposed=True,
-                )
+    def test_assess_without_profile_allowed(self):
+        report = assess(
+            Assessment(
+                finding_id="x",
+                path_id="x-path",
+                cvss_vector=EXAMPLE_VECTOR,
+                asi_category="ASI06",
+                agentic_applicability=dict(APPLICABILITY),
+                include_decision=False,
+                provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
             )
+        )
+        assert "agentic_ai_profile" not in report
+        assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_CVSS_BTE
 
     def test_priority_omitted_when_not_requested(self):
         assert "priority" not in self._assessment(include_priority=False)
 
-    def test_decision_requires_publicly_exposed(self):
-        with pytest.raises(ValueError, match="publicly_exposed"):
-            assess(
-                Assessment(
-                    finding_id="x",
-                    path_id="x-path",
-                    cvss_vector=EXAMPLE_VECTOR,
-                    aivss_vector=EXAMPLE_AI,
-                    asi_category="ASI06",
-                    agentic_applicability=dict(APPLICABILITY),
-                    metric_evidence=dict(METRIC_EVIDENCE),
-                    include_decision=True,
-                    provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
-                )
+    def test_decision_defaults_unknown_publicly_exposed_to_yes(self):
+        report = assess(
+            Assessment(
+                finding_id="x",
+                path_id="x-path",
+                cvss_vector=EXAMPLE_VECTOR,
+                aivss_vector=EXAMPLE_AI,
+                asi_category="ASI06",
+                agentic_applicability=dict(APPLICABILITY),
+                metric_evidence=dict(METRIC_EVIDENCE),
+                include_decision=True,
+                automatable=False,
+                technical_impact="partial",
+                decision_data_observed_at="2026-08-27T00:00:00Z",
+                provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
             )
+        )
+        assert report["decision"]["decision_points"]["publicly_exposed"] is True
+        assert "unknown Publicly Exposed" in report["decision"]["decision_points"][
+            "publicly_exposed_source"
+        ]
 
     def test_report_validates_against_schema(self):
         validate_report(self._assessment())

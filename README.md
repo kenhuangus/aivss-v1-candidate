@@ -24,9 +24,10 @@ Layer 3 remediation uses CERT/CC SSVC decision table **`cisa:DT_BOD2604:1.0.0`**
 (BOD 26-04), with Agentic AI Effect Class **A2** as a fifth transparent extension
 input. See [docs/SSVC.md](docs/SSVC.md).
 
-Every assessment covers one coherent exploit path and supplies all eight
-metrics plus a rationale for each. `AX` is used when classifying evidence is
-insufficient.
+When the Agentic AI Profile is present, the assessment supplies all eight
+metrics plus a rationale for each. The profile may be omitted; a missing
+profile is not A0. `AX` is used when classifying evidence is insufficient
+or the profile is absent.
 
 CVSS and AIVSS vectors are separate, following the
 [CVSS v4.0 Extensions Framework](https://www.first.org/cvss/v4.0/user-guide):

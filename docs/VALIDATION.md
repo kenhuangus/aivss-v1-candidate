@@ -5,8 +5,9 @@
 The repository currently supports these claims:
 
 1. CVSS v4.0 inputs remain separate and independently reproducible.
-2. Every AIVSS report records all eight metrics, one coherent path, and
-   evidence per metric.
+2. When the Agentic AI Profile is present, every report records all eight
+   metrics, one coherent path, and evidence per metric. The profile may be
+   omitted; a missing profile is not A0 and does not assert an effect class.
 3. Unknown classifying evidence is represented explicitly as effect class `AX`.
 4. Effect-class algorithms are deterministic, exact, and exhaustively tested
    over their finite input domains.

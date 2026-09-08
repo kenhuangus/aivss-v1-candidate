@@ -11,7 +11,9 @@ the worst value of each metric from different paths and combine them into a
 synthetic profile. Score materially different paths separately and retain a
 stable `path_id`.
 
-All eight metrics are required. Use `X` when evidence cannot resolve a metric.
+All eight metrics are required when the Agentic AI Profile is present.
+Omit the profile entirely when it is not assessed; a missing profile is not
+A0. Use `X` when evidence cannot resolve a metric that is present.
 Any `X` makes the profile incomplete and produces effect class `AX` when a
 classifying metric is unknown.
 

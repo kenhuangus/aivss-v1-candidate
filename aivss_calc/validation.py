@@ -61,18 +61,34 @@ def validate_assessment_input(payload: dict[str, Any]) -> None:
         raise ValueError("agentic_applicability evidence must not be whitespace-only")
     parse_cvss_vector(payload["cvss_vector"])
     score_cvss_bte(payload["cvss_vector"])
-    profile = parse_aivss_vector(payload["aivss_vector"])
-    validate_metric_evidence(profile, payload["metric_evidence"])
+    has_profile = "aivss_vector" in payload
+    if has_profile != ("metric_evidence" in payload):
+        raise ValueError(
+            "aivss_vector and metric_evidence must both be present or both omitted"
+        )
+    profile = parse_aivss_vector(payload["aivss_vector"]) if has_profile else None
+    if profile is not None:
+        validate_metric_evidence(profile, payload["metric_evidence"])
     Provenance(**payload["provenance"])
     evidence = ExploitationEvidence(**payload.get("evidence", {}))
     if payload.get("include_decision", True):
+        publicly_exposed = payload.get("publicly_exposed")
+        publicly_exposed_source = payload.get("publicly_exposed_source")
+        if publicly_exposed is None:
+            publicly_exposed = True
+            publicly_exposed_source = (
+                publicly_exposed_source
+                or "CISA BOD 26-04 FAQ default: unknown Publicly Exposed treated as Yes"
+            )
         decide(
             evidence=evidence,
-            publicly_exposed=payload["publicly_exposed"],
-            publicly_exposed_source=payload["publicly_exposed_source"],
+            publicly_exposed=publicly_exposed,
+            publicly_exposed_source=publicly_exposed_source,
             decision_data_observed_at=payload["decision_data_observed_at"],
-            agentic_effect_class=profile.effect_class(),
-            td=profile.td,
+            agentic_effect_class=(
+                profile.effect_class() if profile is not None else "AX"
+            ),
+            td=profile.td if profile is not None else None,
             automatable=payload.get("automatable"),
             technical_impact=payload.get("technical_impact"),
             cve_id=payload.get("cve_id"),
@@ -107,32 +123,36 @@ def validate_report(report: dict[str, Any]) -> None:
     if cvss["macrovector"] != expected_macrovector:
         raise ValueError("macrovector does not match the CVSS vector")
 
-    extension = report["agentic_ai_profile"]
-    profile = parse_aivss_vector(extension["vector"])
-    for name in AGENTIC_METRIC_ORDER:
-        value = getattr(profile, name.lower())
-        if extension["metrics"][name]["value"] != value:
-            raise ValueError(f"{name} does not match the AIVSS vector")
-        if extension["metrics"][name]["label"] != AGENTIC_METRICS[name][value][0]:
-            raise ValueError(f"{name} label does not match its value")
-    validate_metric_evidence(
-        profile,
-        {
-            name: extension["metrics"][name]["evidence"]
-            for name in AGENTIC_METRIC_ORDER
-        },
-    )
-    if extension["complete"] != profile.complete:
-        raise ValueError("profile complete flag does not match metric values")
-    if extension["agentic_effect_class"] != profile.effect_class():
-        raise ValueError("agentic_effect_class does not match the AIVSS vector")
-    if (
-        extension["agentic_effect_class_label"]
-        != AGENTIC_EFFECT_CLASS_LABELS[profile.effect_class()]
-    ):
-        raise ValueError("agentic_effect_class_label does not match the class")
-    if extension["agentic_effect_class_status"] != "candidate-unvalidated":
-        raise ValueError("agentic_effect_class_status must disclose candidate validity")
+    extension = report.get("agentic_ai_profile")
+    profile = None
+    if extension is not None:
+        profile = parse_aivss_vector(extension["vector"])
+        for name in AGENTIC_METRIC_ORDER:
+            value = getattr(profile, name.lower())
+            if extension["metrics"][name]["value"] != value:
+                raise ValueError(f"{name} does not match the AIVSS vector")
+            if extension["metrics"][name]["label"] != AGENTIC_METRICS[name][value][0]:
+                raise ValueError(f"{name} label does not match its value")
+        validate_metric_evidence(
+            profile,
+            {
+                name: extension["metrics"][name]["evidence"]
+                for name in AGENTIC_METRIC_ORDER
+            },
+        )
+        if extension["complete"] != profile.complete:
+            raise ValueError("profile complete flag does not match metric values")
+        if extension["agentic_effect_class"] != profile.effect_class():
+            raise ValueError("agentic_effect_class does not match the AIVSS vector")
+        if (
+            extension["agentic_effect_class_label"]
+            != AGENTIC_EFFECT_CLASS_LABELS[profile.effect_class()]
+        ):
+            raise ValueError("agentic_effect_class_label does not match the class")
+        if extension["agentic_effect_class_status"] != "candidate-unvalidated":
+            raise ValueError(
+                "agentic_effect_class_status must disclose candidate validity"
+            )
 
     mode1 = report["scores"]["mode1_interpretation"]
     if mode1["aivss"] != expected_cvss or mode1["cvss_bte"] != expected_cvss:
@@ -207,9 +227,11 @@ def validate_report(report: dict[str, Any]) -> None:
                 "KEV decision points must not use missing-metadata defaults"
             )
         faq_applied = decision.get("missing_metadata_faq_applied") is True
-        if points["agentic_effect_class"] != profile.effect_class():
+        expected_class = profile.effect_class() if profile is not None else "AX"
+        expected_td = profile.td if profile is not None else None
+        if points["agentic_effect_class"] != expected_class:
             raise ValueError("decision class does not match the AIVSS profile")
-        if points["td"] != profile.td:
+        if points["td"] != expected_td:
             raise ValueError("decision TD does not match the AIVSS profile")
         if faq_applied:
             if decision[base_key] != "60D":

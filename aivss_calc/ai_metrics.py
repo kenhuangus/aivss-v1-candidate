@@ -587,7 +587,9 @@ def parse_aivss_vector(vector: str) -> AIProfile:
             raise ValueError(f"Malformed AIVSS metric segment {part!r}")
         key, _, value = part.partition(":")
         if key == "TA":
-            key = "TD"
+            raise ValueError(
+                "AIVSS metric 'TA' is withdrawn; use TD (Traceability Deficit)"
+            )
         if key not in AGENTIC_METRICS:
             raise ValueError(f"Unknown AIVSS metric {key!r}")
         if key in found:

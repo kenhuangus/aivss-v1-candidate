@@ -122,10 +122,10 @@ def assessment_from_payload(payload: dict[str, Any]) -> Assessment:
         title=payload.get("title"),
         summary=payload.get("summary"),
         cvss_vector=payload["cvss_vector"],
-        aivss_vector=payload["aivss_vector"],
+        aivss_vector=payload.get("aivss_vector"),
         asi_category=payload["risk_category"],
         agentic_applicability=dict(payload["agentic_applicability"]),
-        metric_evidence=dict(payload["metric_evidence"]),
+        metric_evidence=dict(payload.get("metric_evidence") or {}),
         evidence=ExploitationEvidence(**dict(payload.get("evidence", {}))),
         org_context=OrgContext(**org) if org else None,
         provenance=Provenance(**dict(payload.get("provenance", {}))),
@@ -213,12 +213,13 @@ def assess(a: Assessment) -> dict[str, Any]:
         if a.aivss_vector is not None
         else embedded
     )
-    if profile is None:
+    if profile is not None:
+        validate_metric_evidence(profile, a.metric_evidence)
+    elif a.metric_evidence:
         raise ValueError(
-            "All eight AIVSS metrics are required in a separate current-version "
-            "AIVSS extension vector"
+            "metric_evidence requires a complete aivss_vector / ai_profile; "
+            "omit both when the Agentic AI Profile is absent"
         )
-    validate_metric_evidence(profile, a.metric_evidence)
     if a.provenance.assessed_at is None:
         raise ValueError(
             "provenance.assessed_at is required as an RFC 3339 evidence timestamp"
@@ -227,8 +228,9 @@ def assess(a: Assessment) -> dict[str, Any]:
     metrics = parse_cvss_vector(cvss_only)
     mv = macrovector(metrics)
     cvss_bte = score_cvss_bte(cvss_only)
-    ai_class = profile.effect_class()
-    td = profile.td
+    # Missing profile: effect class is not asserted (AX). Never treat as A0.
+    ai_class = profile.effect_class() if profile is not None else "AX"
+    td = profile.td if profile is not None else None
 
     asi = normalize_asi(a.asi_category)
 
@@ -261,31 +263,41 @@ def assess(a: Assessment) -> dict[str, Any]:
     if a.summary is not None:
         report["summary"] = a.summary
 
-    report["agentic_ai_profile"] = {
-        "vector": profile.to_vector(),
-        "metrics": {
-            name: {
-                "value": getattr(profile, name.lower()),
-                "label": AGENTIC_METRICS[name][getattr(profile, name.lower())][0],
-                "evidence": dict(a.metric_evidence[name]),
-            }
-            for name in AGENTIC_METRIC_ORDER
-        },
-        "complete": profile.complete,
-        "agentic_effect_class": ai_class,
-        "agentic_effect_class_label": AGENTIC_EFFECT_CLASS_LABELS[ai_class],
-        "agentic_effect_class_status": EFFECT_CLASS_STATUS,
-    }
+    if profile is not None:
+        report["agentic_ai_profile"] = {
+            "vector": profile.to_vector(),
+            "metrics": {
+                name: {
+                    "value": getattr(profile, name.lower()),
+                    "label": AGENTIC_METRICS[name][getattr(profile, name.lower())][0],
+                    "evidence": dict(a.metric_evidence[name]),
+                }
+                for name in AGENTIC_METRIC_ORDER
+            },
+            "complete": profile.complete,
+            "agentic_effect_class": ai_class,
+            "agentic_effect_class_label": AGENTIC_EFFECT_CLASS_LABELS[ai_class],
+            "agentic_effect_class_status": EFFECT_CLASS_STATUS,
+        }
 
     if a.include_decision:
-        if a.publicly_exposed is None:
+        # CISA BOD 26-04 FAQ: unknown Publicly Exposed defaults to Yes.
+        publicly_exposed = a.publicly_exposed
+        publicly_exposed_source = a.publicly_exposed_source
+        if publicly_exposed is None:
+            publicly_exposed = True
+            publicly_exposed_source = (
+                publicly_exposed_source
+                or "CISA BOD 26-04 FAQ default: unknown Publicly Exposed treated as Yes"
+            )
+        if a.decision_data_observed_at is None:
             raise ValueError(
-                "publicly_exposed is required when include_decision is true"
+                "decision_data_observed_at is required when include_decision is true"
             )
         report["decision"] = decide(
             evidence=a.evidence,
-            publicly_exposed=a.publicly_exposed,
-            publicly_exposed_source=a.publicly_exposed_source,
+            publicly_exposed=publicly_exposed,
+            publicly_exposed_source=publicly_exposed_source,
             decision_data_observed_at=a.decision_data_observed_at,
             agentic_effect_class=ai_class,
             td=td,

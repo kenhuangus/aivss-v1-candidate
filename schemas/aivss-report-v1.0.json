@@ -15,7 +15,6 @@
     "risk_category",
     "agentic_applicability",
     "cvss",
-    "agentic_ai_profile",
     "scores",
     "provenance"
   ],
