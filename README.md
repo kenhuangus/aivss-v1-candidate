@@ -117,3 +117,10 @@ and the EchoLeak (`CVE-2025-32711`) case study:
 reference implementation under the BSD-2-Clause license; see
 [third-party notices](THIRD_PARTY_NOTICES.md). CVSS is owned and managed by
 FIRST.Org, Inc. Its use does not imply FIRST endorsement of AIVSS.
+
+## License
+
+AIVSS is an OWASP project. Unless otherwise noted, the contents of this
+repository are licensed under the [Apache License, Version 2.0](LICENSE).
+Third-party components remain under their own licenses; see
+[third-party notices](THIRD_PARTY_NOTICES.md).
