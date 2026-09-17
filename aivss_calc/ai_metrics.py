@@ -361,6 +361,17 @@ AI_METRICS = AGENTIC_METRICS
 AGENTIC_METRIC_ORDER: tuple[str, ...] = ("LC", "CP", "AP", "SR", "EX", "PT", "CA", "TD")
 AI_METRIC_ORDER = AGENTIC_METRIC_ORDER
 
+AGENTIC_METRIC_NAMES: dict[str, str] = {
+    "LC": "Language-Mediated Control",
+    "CP": "Context and Memory Persistence",
+    "AP": "Agentic Propagation",
+    "SR": "Stochastic Exploit Reliability",
+    "EX": "Extension Surface",
+    "PT": "Provider Trust Deficit",
+    "CA": "Cost Abuse Surface",
+    "TD": "Traceability Deficit",
+}
+
 AGENTIC_EFFECT_CLASS_LABELS: dict[str, str] = {
     "A0": "No class-based promotion",
     "A1": "Agentic characteristics present",

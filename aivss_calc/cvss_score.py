@@ -18,6 +18,21 @@ def round_half_up(value: float, decimals: int = 1) -> float:
     return float(Decimal(str(value)).quantize(quantum, rounding=ROUND_HALF_UP))
 
 
+def severity_rating(score: float) -> str:
+    """Return the CVSS v4.0 qualitative severity rating for a score."""
+    if not 0.0 <= score <= 10.0:
+        raise ValueError(f"CVSS score must be in [0.0, 10.0]; got {score}")
+    if score == 0.0:
+        return "None"
+    if score < 4.0:
+        return "Low"
+    if score < 7.0:
+        return "Medium"
+    if score < 9.0:
+        return "High"
+    return "Critical"
+
+
 def score_cvss_bte(cvss_vector: str) -> float:
     """Return the CVSS v4.0 Base+Threat+Environmental score for a vector."""
     try:
