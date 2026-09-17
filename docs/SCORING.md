@@ -39,6 +39,10 @@ and deterministic, but have not yet passed the gates in
 not modify CVSS metric definitions, constants, ordering, or the official CVSS
 score. Consumers must always retain and display `cvss_bte`.
 
+The reference `assess` path scores the CVSS vector as supplied. It does not
+resolve Exploit Maturity (`E`) from KEV, PoC, or other evidence. Integrations
+must determine `E` and place it in the CVSS vector before calling `assess`.
+
 ## Normative AIVSS severity
 
 The normative AIVSS severity number equals CVSS-BTE:

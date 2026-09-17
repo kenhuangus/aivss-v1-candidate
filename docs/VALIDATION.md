@@ -21,6 +21,20 @@ The repository does **not** yet support claims that the candidate
 effect-class boundaries, remediation overlay, or priority bands predict loss,
 exploitation, or optimal remediation decisions.
 
+## Reference calculator scope (candidate)
+
+https://github.com/kenhuangus/aivss-v1-candidate
+
+The reference calculator is a candidate implementation (AIVSS Project, 2026).
+At reviewed commit `e6e29ebc5359e5b7691553da362319ffa50c4394`, all 127 tests
+pass, but that test suite does not establish conformance to every rule in the
+AIVSS 1.0 specification. The `assess` command scores the supplied CVSS vector
+without resolving Exploit Maturity (`E`); integrations must resolve `E` first.
+The implementation accepts absent profiles for comparison output and restricts
+taxonomy IDs to ASI01–ASI10, so it does not implement every Level 1 or
+extended-taxonomy requirement. Its `legacy` subcommand is for migration
+comparison only and must not be used for compliance.
+
 ## Candidate hypotheses
 
 The following outputs are retained to enable evaluation, not to assert

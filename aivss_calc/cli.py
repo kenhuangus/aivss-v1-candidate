@@ -203,7 +203,8 @@ def cmd_legacy(args: argparse.Namespace) -> int:
         mitigation_residual=data.get("mitigation_residual"),
     )
     print(
-        "WARNING: historical v0.x reproduction only; not part of AIVSS 1.0.",
+        "WARNING: legacy is for migration comparison only; "
+        "must not be used for AIVSS 1.0 compliance.",
         file=sys.stderr,
     )
     _emit(result)
@@ -329,7 +330,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--likelihood", type=float, default=0.5)
     p.set_defaults(func=cmd_priority)
 
-    p = sub.add_parser("legacy")
+    p = sub.add_parser(
+        "legacy",
+        help=(
+            "Migration comparison only (withdrawn v0.x uplift). "
+            "Must not be used for AIVSS 1.0 compliance."
+        ),
+    )
     p.add_argument("--factors", required=True)
     p.set_defaults(func=cmd_legacy)
 
