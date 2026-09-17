@@ -98,6 +98,43 @@ def test_share_link_restores_edited_finding(browser, base_url):
     assert errors == []
 
 
+def test_hints_open_on_hover_click_and_keyboard(browser, base_url):
+    errors: list[str] = []
+    page = _open(browser, f"{base_url}?example=ASI06", errors)
+    tip = page.locator("#hint-tip")
+    name = page.locator('#cvss-base .metric-group:has(abbr:text-is("AT")) .metric-name')
+
+    name.hover()
+    assert tip.is_visible()
+    assert "Conditions of the deployment" in tip.text_content()
+
+    page.mouse.move(5, 5)
+    assert tip.is_hidden()
+
+    # A click pins the hint open, which is also what a tap does on a phone.
+    name.click()
+    page.mouse.move(600, 5)
+    assert tip.is_visible()
+    page.keyboard.press("Escape")
+    assert tip.is_hidden()
+
+    # Option buttons explain themselves on hover but still select on click.
+    option = page.locator(
+        '#cvss-base .metric-group:has(abbr:text-is("AT")) .opt', has_text="Present"
+    )
+    option.hover()
+    assert tip.is_visible()
+    option.click()
+    page.wait_for_function(
+        "() => document.getElementById('cvss-input').value.includes('AT:P')"
+    )
+    assert option.get_attribute("aria-pressed") == "true"
+
+    page.keyboard.press("Tab")
+    assert tip.is_visible()
+    assert errors == []
+
+
 def test_invalid_pasted_vector_shows_error(browser, base_url):
     errors: list[str] = []
     page = _open(browser, base_url, errors)

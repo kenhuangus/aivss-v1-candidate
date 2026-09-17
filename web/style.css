@@ -757,14 +757,34 @@ details.metric-panel[open] > summary { margin-bottom: 0.75rem; }
   font-weight: 500;
 }
 
-/* Signals that the name carries an explanation on hover. */
-.metric-name[title],
-.field-label[title],
-.decision-row dt[title],
-.score-label[title] {
+.hint-tip {
+  position: fixed;
+  z-index: 200;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: var(--text);
+  color: #faf9f5;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+
+.hint-tip[hidden] { display: none; }
+
+[data-hint] { cursor: help; }
+.opt[data-hint] { cursor: pointer; }
+
+.opt.hint-open,
+.preset.hint-open { border-color: var(--accent); }
+
+/* Signals that the name carries an explanation. */
+.metric-name[data-hint],
+.field-label[data-hint],
+.decision-row dt[data-hint],
+.score-label[data-hint] {
   text-decoration: underline dotted rgba(21, 21, 20, 0.28);
   text-underline-offset: 3px;
-  cursor: help;
 }
 
 .metric-name abbr {

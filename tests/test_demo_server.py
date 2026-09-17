@@ -44,6 +44,7 @@ def test_demo_index_and_assets():
             "/web/style.css",
             "/web/app.js",
             "/web/engine.js",
+            "/web/hints.js",
             "/web/calculator.js",
             "/py/aivss_calc.zip",
         ):
@@ -103,6 +104,7 @@ def test_static_build_includes_web_assets():
             out / "web" / "style.css",
             out / "web" / "app.js",
             out / "web" / "engine.js",
+            out / "web" / "hints.js",
             out / "web" / "calculator.js",
             out / "data" / "top10.json",
             out / "py" / "aivss_calc.zip",

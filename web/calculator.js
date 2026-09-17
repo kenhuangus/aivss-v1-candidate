@@ -61,6 +61,7 @@
     for (const [key, value] of Object.entries(props)) {
       if (value === undefined || value === null) continue;
       if (key === "class") node.className = value;
+      else if (key === "hint") window.AivssHints.attach(node, value);
       else if (key === "text") node.textContent = value;
       else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
       else node.setAttribute(key, value);
@@ -129,14 +130,14 @@
   }
 
   // ── Form rendering ──
-  function optionButton(label, code, pressed, title, onClick) {
+  function optionButton(label, code, pressed, hint, onClick) {
     return el(
       "button",
       {
         type: "button",
         class: "opt",
         "aria-pressed": String(pressed),
-        title,
+        hint,
         onclick: onClick,
       },
       el("span", { class: "opt-label", text: label }),
@@ -150,7 +151,7 @@
       { class: "metric-group" },
       el(
         "span",
-        { class: "metric-name", title: summary },
+        { class: "metric-name", hint: summary },
         name,
         " ",
         el("abbr", { text: code }),
@@ -261,7 +262,7 @@
               type: "button",
               class: "opt",
               "aria-pressed": String(d[key] === value),
-              title: info.values?.[value],
+              hint: info.values?.[value],
               onclick: () => {
                 d[key] = d[key] === value && key !== "evidence" ? null : value;
                 changed();
@@ -273,7 +274,7 @@
       );
       const group = container.closest(".metric-group");
       const name = group.querySelector(".metric-name");
-      if (info.summary) name.title = info.summary;
+      if (info.summary) window.AivssHints.attach(name, info.summary);
       let description = group.querySelector(".metric-desc");
       if (!description) {
         description = el("p", { class: "metric-desc" });
@@ -293,7 +294,7 @@
             type: "button",
             class: "preset",
             "aria-pressed": String(preset.id === active),
-            title: `${preset.name}: ${preset.title}`,
+            hint: `${preset.name} — ${preset.title}`,
             onclick: () => loadPreset(preset.id),
           },
           el("span", { class: "preset-id", text: preset.id }),
@@ -478,7 +479,7 @@
     return el(
       "div",
       { class: "decision-row" },
-      el("dt", { text: label, title: hint }),
+      el("dt", { text: label, hint }),
       el("dd", {}, ...value),
     );
   }
@@ -586,8 +587,7 @@
     const inputs = catalog.decision_inputs;
     const results = catalog.result_info;
     const hint = (selector, text) => {
-      const node = document.querySelector(selector);
-      if (node && text) node.title = text;
+      window.AivssHints.attach(document.querySelector(selector), text);
     };
     hint("#decision-enabled ~ span", inputs.enabled.summary);
     hint("#exposure-source", inputs.publicly_exposed_source.summary);

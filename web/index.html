@@ -41,15 +41,9 @@
       <h1 class="hero-title">Score an agentic AI finding</h1>
       <p class="hero-lede">
         Start from an OWASP Agentic Top 10 example, or set the metrics yourself.
-        The severity number stays ordinary CVSS v4.0 &mdash; the agentic metrics are
-        recorded beside it and never inflate it. You also get an effect class and,
-        if you need one, a CISA BOD 26-04 remediation deadline.
+        The severity number stays ordinary CVSS v4.0. You also get an effect class
+        and, if you need one, a CISA BOD 26-04 remediation deadline.
       </p>
-      <div class="hero-badges">
-        <span class="pill">Severity is CVSS v4.0, unchanged</span>
-        <span class="pill">Same engine as the CLI</span>
-        <span class="pill pill-accent">Nothing leaves your browser</span>
-      </div>
     </div>
   </section>
 
@@ -59,7 +53,7 @@
 
       <div class="panel presets">
         <div class="presets-head">
-          <span class="field-label" title="Load one of the ten OWASP Agentic Top 10 reference findings into the calculator. Editing any metric turns it into your own custom finding.">Start from an example</span>
+          <span class="field-label" data-hint="Load one of the ten OWASP Agentic Top 10 reference findings into the calculator. Editing any metric turns it into your own custom finding.">Start from an example</span>
           <span id="preset-status" class="preset-status">Loading examples…</span>
         </div>
         <div id="preset-list" class="preset-list" role="group" aria-label="ASI examples"></div>
@@ -67,14 +61,14 @@
 
       <form id="vector-form" class="panel vector-form" autocomplete="off">
         <label class="field">
-          <span class="field-label" title="Paste a CVSS v4.0 vector string to load it into the form.">CVSS v4.0 vector</span>
+          <span class="field-label" data-hint="Paste a CVSS v4.0 vector string to load it into the form.">CVSS v4.0 vector</span>
           <input id="cvss-input" type="text" spellcheck="false" placeholder="CVSS:4.0/AV:N/AC:L/…" />
         </label>
         <label class="field">
-          <span class="field-label" title="Paste the separate AIVSS:1.0 extension vector holding all eight agentic metrics.">AIVSS vector</span>
+          <span class="field-label" data-hint="Paste the separate AIVSS:1.0 extension vector holding all eight agentic metrics.">AIVSS vector</span>
           <input id="aivss-input" type="text" spellcheck="false" placeholder="AIVSS:1.0/LC:D/CP:C/…" />
         </label>
-        <button type="submit" class="btn btn-outline btn-sm" title="Validate both vectors and load them into the metric buttons below.">Load vectors</button>
+        <button type="submit" class="btn btn-outline btn-sm" data-hint="Validate both vectors and load them into the metric buttons below.">Load vectors</button>
         <p id="vector-error" class="inline-error" role="alert" hidden></p>
       </form>
 
@@ -91,7 +85,7 @@
           </fieldset>
 
           <details class="panel metric-panel">
-            <summary title="Optional deployment context. Left Not Defined, security requirements count as High and Base values are used unchanged.">CVSS v4.0 · Environmental <span class="muted">(optional; Not Defined by default)</span></summary>
+            <summary data-hint="Optional deployment context. Left Not Defined, security requirements count as High and Base values are used unchanged.">CVSS v4.0 · Environmental <span class="muted">(optional; Not Defined by default)</span></summary>
             <div id="cvss-env" class="metric-groups"></div>
           </details>
 
@@ -135,7 +129,7 @@
                 <div class="options" data-decision="evidence" data-choices="none:None supplied,poc:Proof of concept,observed_local:Observed locally"></div>
               </div>
               <details class="cve-details">
-                <summary title="Only for findings that have a CVE ID. KEV listing, CISA Vulnrichment values and BOD 26-04 compliance results all require one.">CVE finding <span class="muted">(KEV, BOD 26-04 scope)</span></summary>
+                <summary data-hint="Only for findings that have a CVE ID. KEV listing, CISA Vulnrichment values and BOD 26-04 compliance results all require one.">CVE finding <span class="muted">(KEV, BOD 26-04 scope)</span></summary>
                 <label class="field">
                   <span class="field-label">CVE ID</span>
                   <input id="cve-id" type="text" spellcheck="false" placeholder="CVE-2025-32711" />
@@ -180,19 +174,19 @@
               <div class="vector-out">
                 <div class="vector-row">
                   <code id="out-cvss"></code>
-                  <button type="button" class="btn-copy" data-copy="out-cvss" title="Copy the CVSS v4.0 vector string.">Copy</button>
+                  <button type="button" class="btn-copy" data-copy="out-cvss" data-hint="Copy the CVSS v4.0 vector string.">Copy</button>
                 </div>
                 <div class="vector-row">
                   <code id="out-aivss"></code>
-                  <button type="button" class="btn-copy" data-copy="out-aivss" title="Copy the AIVSS extension vector string.">Copy</button>
+                  <button type="button" class="btn-copy" data-copy="out-aivss" data-hint="Copy the AIVSS extension vector string.">Copy</button>
                 </div>
               </div>
-              <button id="share-link" type="button" class="btn btn-outline btn-sm btn-block" title="Copy a link that reproduces this exact finding, including the remediation inputs.">Copy share link</button>
+              <button id="share-link" type="button" class="btn btn-outline btn-sm btn-block" data-hint="Copy a link that reproduces this exact finding, including the remediation inputs.">Copy share link</button>
 
               <div id="decision-result" class="decision-result"></div>
 
               <details class="raw-json">
-                <summary title="The complete report this calculator produced, in the same shape the CLI emits.">Full calculator output (JSON)</summary>
+                <summary data-hint="The complete report this calculator produced, in the same shape the CLI emits.">Full calculator output (JSON)</summary>
                 <pre id="result-json"></pre>
               </details>
             </div>
@@ -214,7 +208,7 @@
 
       <div class="toolbar">
         <label class="field">
-          <span class="field-label" title="Reorder the example cards.">Sort by</span>
+          <span class="field-label" data-hint="Reorder the example cards.">Sort by</span>
           <select id="sort-by">
             <option value="asi">ASI ID</option>
             <option value="mode1" selected>AIVSS score</option>
@@ -249,6 +243,7 @@
     </p>
   </footer>
 
+  <script src="web/hints.js"></script>
   <script src="web/engine.js"></script>
   <script src="web/calculator.js"></script>
   <script src="web/app.js"></script>
