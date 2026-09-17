@@ -26,7 +26,9 @@ def build(out_dir: Path, base_href: str = DEFAULT_BASE) -> None:
     web_out.mkdir()
 
     for path in WEB_ROOT.iterdir():
-        if not path.is_file():
+        if path.is_dir():
+            if path.name == "assets":
+                shutil.copytree(path, out_dir / "assets", dirs_exist_ok=True)
             continue
         if path.name in {"style.css", "app.js"}:
             shutil.copy2(path, web_out / path.name)

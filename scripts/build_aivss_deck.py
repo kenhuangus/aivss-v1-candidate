@@ -1,0 +1,2283 @@
+#!/usr/bin/env python3
+"""Build the production AIVSS 1.0 presentation slide deck adhering to the graph-engineer template."""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+
+ROOT = r"C:\Users\kenhu\aivss-v1-candidate"
+SCRIPTS_DIR = os.path.join(ROOT, "scripts")
+DOCS_DIR = os.path.join(ROOT, "docs")
+WEB_DIR = os.path.join(ROOT, "web")
+ASSETS_DIR = os.path.join(ROOT, "assets")
+
+os.makedirs(SCRIPTS_DIR, exist_ok=True)
+os.makedirs(DOCS_DIR, exist_ok=True)
+os.makedirs(WEB_DIR, exist_ok=True)
+os.makedirs(ASSETS_DIR, exist_ok=True)
+
+# ---------------------------------------------------------------------------
+# SVG DIAGRAMS MAP
+# ---------------------------------------------------------------------------
+SVG_MAP = {
+    "1": """<svg viewBox="0 0 880 135" class="slide-svg" role="img" aria-hidden="true">
+  <defs>
+    <marker id="arr-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#BD5D3A"/>
+    </marker>
+  </defs>
+  <rect x="12" y="10" width="856" height="115" rx="12" fill="#FFFFFF" stroke="#BD5D3A" stroke-width="2.2"/>
+  <text x="32" y="32" fill="#BD5D3A" font-family="Inter,system-ui,sans-serif" font-size="11.5" font-weight="850" text-transform="uppercase" letter-spacing="0.06em">AIVSS 1.0 DECOUPLED ARCHITECTURE PIPELINE</text>
+  
+  <rect x="32" y="44" width="230" height="66" rx="8" fill="#F0F5FE" stroke="#2563eb" stroke-width="1.8"/>
+  <text x="147" y="68" fill="#1e40af" font-family="Inter,system-ui,sans-serif" font-size="12.5" font-weight="800" text-anchor="middle">Layer 1: Technical Severity</text>
+  <text x="147" y="86" fill="#141413" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="700" text-anchor="middle">AIVSS = CVSS-BTE (Normative)</text>
+  <text x="147" y="100" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">Unpolluted by agentic multipliers</text>
+
+  <path d="M 262 77 L 302 77" stroke="#BD5D3A" stroke-width="2.2" fill="none" marker-end="url(#arr-main)"/>
+
+  <rect x="312" y="44" width="250" height="66" rx="8" fill="#FDF3E7" stroke="#BD5D3A" stroke-width="1.8"/>
+  <text x="437" y="68" fill="#BD5D3A" font-family="Inter,system-ui,sans-serif" font-size="12.5" font-weight="800" text-anchor="middle">Layer 2: Agentic AI Profile</text>
+  <text x="437" y="86" fill="#141413" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">LC · CP · AP · SR · EX · PT · CA · TD</text>
+  <text x="437" y="100" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">Derived Effect Class: A0 / A1 / A2 / AX</text>
+
+  <path d="M 562 77 L 602 77" stroke="#BD5D3A" stroke-width="2.2" fill="none" marker-end="url(#arr-main)"/>
+
+  <rect x="612" y="44" width="236" height="66" rx="8" fill="#E8F8F2" stroke="#059669" stroke-width="1.8"/>
+  <text x="730" y="68" fill="#047857" font-family="Inter,system-ui,sans-serif" font-size="12.5" font-weight="800" text-anchor="middle">Layer 3: Remediation Urgency</text>
+  <text x="730" y="86" fill="#141413" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="700" text-anchor="middle">CISA BOD 26-04 / SSVC</text>
+  <text x="730" y="100" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">16-Row Deployer Table + A2 Overlay</text>
+</svg>""",
+
+    "2": """<svg viewBox="0 0 880 110" class="slide-svg" role="img" aria-hidden="true">
+  <defs>
+    <marker id="arr-speaker" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#BD5D3A"/>
+    </marker>
+  </defs>
+  <rect x="16" y="20" width="190" height="68" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="111" y="48" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="13.5" font-weight="800" text-anchor="middle">Project Lead</text>
+  <text x="111" y="68" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="600" text-anchor="middle">OWASP AIVSS &amp; Top 10</text>
+
+  <path d="M 206 54 L 236 54" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-speaker)"/>
+
+  <rect x="246" y="20" width="190" height="68" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="341" y="48" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="13.5" font-weight="800" text-anchor="middle">Adjunct Professor</text>
+  <text x="341" y="68" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="600" text-anchor="middle">Univ. of San Francisco</text>
+
+  <path d="M 436 54 L 466 54" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-speaker)"/>
+
+  <rect x="476" y="20" width="190" height="68" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="571" y="48" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="13.5" font-weight="800" text-anchor="middle">CSA Research Fellow</text>
+  <text x="571" y="68" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="600" text-anchor="middle">Co-Chair, AI Safety WGs</text>
+
+  <path d="M 666 54 L 696 54" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-speaker)"/>
+
+  <rect x="706" y="20" width="158" height="68" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="785" y="48" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="13.5" font-weight="800" text-anchor="middle">AI Author</text>
+  <text x="785" y="68" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="600" text-anchor="middle">12 Published Books</text>
+</svg>""",
+
+    "3": """<svg viewBox="0 0 880 132" class="slide-svg" role="img" aria-hidden="true">
+  <defs>
+    <marker id="arr-shift" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#BD5D3A"/>
+    </marker>
+  </defs>
+  <g transform="translate(10, 4)">
+    <rect x="0" y="0" width="395" height="122" rx="10" fill="#FAF9F5" stroke="#2563eb" stroke-width="2"/>
+    <rect x="0" y="0" width="395" height="26" rx="10" fill="#EBF2FE" stroke="#2563eb" stroke-width="2"/>
+    <text x="197" y="18" fill="#1e40af" font-family="Inter" font-size="11" font-weight="800" text-anchor="middle">TRADITIONAL VULNERABILITY MANAGEMENT</text>
+    <text x="197" y="44" fill="#141413" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle">Conflated Severity, Exposure &amp; Timeline Into One Number</text>
+    <g transform="translate(12, 54)">
+      <rect x="0" y="0" width="180" height="34" rx="5" fill="#FFFFFF" stroke="#E3E0D6"/>
+      <text x="90" y="14" fill="#1e3a8a" font-family="Inter" font-size="8.8" font-weight="750" text-anchor="middle">Single Composite Score</text>
+      <text x="90" y="26" fill="#6B6B63" font-family="Inter" font-size="8" text-anchor="middle">CVSS v3/v4 score = urgency</text>
+      <rect x="190" y="0" width="180" height="34" rx="5" fill="#FFFFFF" stroke="#E3E0D6"/>
+      <text x="280" y="14" fill="#1e3a8a" font-family="Inter" font-size="8.8" font-weight="750" text-anchor="middle">Arithmetic Distortion</text>
+      <text x="280" y="26" fill="#6B6B63" font-family="Inter" font-size="8" text-anchor="middle">Multipliers distort compliance</text>
+    </g>
+    <rect x="12" y="94" width="370" height="20" rx="4" fill="#EBF2FE" stroke="#bfdbfe"/>
+    <text x="197" y="108" fill="#1e40af" font-family="JetBrains Mono" font-size="9" font-weight="700" text-anchor="middle">Failure: High score != Active Threat; Low score can cascade</text>
+  </g>
+  <g transform="translate(410, 50)">
+    <path d="M 0 15 L 56 15" stroke="#BD5D3A" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#arr-shift)"/>
+    <rect x="4" y="3" width="48" height="24" rx="4" fill="#F5E6DF" stroke="#BD5D3A" stroke-width="1.2"/>
+    <text x="28" y="15" fill="#BD5D3A" font-family="Inter" font-size="7.5" font-weight="850" text-anchor="middle">AIVSS 1.0</text>
+    <text x="28" y="23" fill="#BD5D3A" font-family="Inter" font-size="6.8" font-weight="800" text-anchor="middle">PARADIGM</text>
+  </g>
+  <g transform="translate(475, 4)">
+    <rect x="0" y="0" width="395" height="122" rx="10" fill="#FAF9F5" stroke="#059669" stroke-width="2"/>
+    <rect x="0" y="0" width="395" height="26" rx="10" fill="#E6F7F0" stroke="#059669" stroke-width="2"/>
+    <text x="197" y="18" fill="#047857" font-family="Inter" font-size="11" font-weight="800" text-anchor="middle">AIVSS 1.0 THREE-LAYER SEPARATION</text>
+    <text x="197" y="44" fill="#141413" font-family="Inter" font-size="10" font-weight="700" text-anchor="middle">Decoupled Technical Severity, Agentic Profile &amp; Remediation Urgency</text>
+    <g transform="translate(12, 54)">
+      <rect x="0" y="0" width="180" height="34" rx="5" fill="#FFFFFF" stroke="#E3E0D6"/>
+      <text x="90" y="14" fill="#BD5D3A" font-family="Inter" font-size="8.8" font-weight="750" text-anchor="middle">Normative Severity (L1)</text>
+      <text x="90" y="26" fill="#6B6B63" font-family="Inter" font-size="8" text-anchor="middle">AIVSS = CVSS-BTE strictly</text>
+      <rect x="190" y="0" width="180" height="34" rx="5" fill="#FFFFFF" stroke="#059669" stroke-width="1.2"/>
+      <text x="280" y="14" fill="#047857" font-family="Inter" font-size="8.8" font-weight="750" text-anchor="middle">SSVC Deployer Table (L3)</text>
+      <text x="280" y="26" fill="#6B6B63" font-family="Inter" font-size="8" text-anchor="middle">BOD 26-04 factual timelines</text>
+    </g>
+    <rect x="12" y="94" width="370" height="20" rx="4" fill="#E6F7F0" stroke="#a7f3d0"/>
+    <text x="197" y="108" fill="#047857" font-family="Inter" font-size="9" font-weight="800" text-anchor="middle">Goal: Standards-compliant, auditable, risk-based vulnerability governance</text>
+  </g>
+</svg>""",
+
+    "4": """<svg viewBox="0 0 880 115" class="slide-svg" role="img" aria-hidden="true">
+  <defs>
+    <marker id="arr-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#BD5D3A"/>
+    </marker>
+  </defs>
+  <rect x="15" y="18" width="130" height="74" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="80" y="44" fill="#BD5D3A" font-family="JetBrains Mono,monospace" font-size="12" font-weight="800" text-anchor="middle">01. ARCH</text>
+  <text x="80" y="62" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">3-Layer Model</text>
+  <text x="80" y="78" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">Decoupled layers</text>
+
+  <path d="M 145 55 L 157 55" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ag)"/>
+
+  <rect x="160" y="18" width="130" height="74" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="225" y="44" fill="#BD5D3A" font-family="JetBrains Mono,monospace" font-size="12" font-weight="800" text-anchor="middle">02. CVSS</text>
+  <text x="225" y="62" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">Agent Rules</text>
+  <text x="225" y="78" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">Subsequent systems</text>
+
+  <path d="M 290 55 L 302 55" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ag)"/>
+
+  <rect x="305" y="18" width="130" height="74" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="370" y="44" fill="#BD5D3A" font-family="JetBrains Mono,monospace" font-size="12" font-weight="800" text-anchor="middle">03. PROFILE</text>
+  <text x="370" y="62" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">8 Metrics &amp; Class</text>
+  <text x="370" y="78" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">LC..TD to A0..A2</text>
+
+  <path d="M 435 55 L 447 55" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ag)"/>
+
+  <rect x="450" y="18" width="130" height="74" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="515" y="44" fill="#BD5D3A" font-family="JetBrains Mono,monospace" font-size="12" font-weight="800" text-anchor="middle">04. SSVC</text>
+  <text x="515" y="62" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">BOD 26-04</text>
+  <text x="515" y="78" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">16 deployer rows</text>
+
+  <path d="M 580 55 L 592 55" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ag)"/>
+
+  <rect x="595" y="18" width="130" height="74" rx="8" fill="#FAF9F5" stroke="#BD5D3A" stroke-width="2"/>
+  <text x="660" y="44" fill="#BD5D3A" font-family="JetBrains Mono,monospace" font-size="12" font-weight="800" text-anchor="middle">05. BENCH</text>
+  <text x="660" y="62" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">Top 10 &amp; EchoLeak</text>
+  <text x="660" y="78" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">ASI01-10 + CVE</text>
+
+  <path d="M 725 55 L 737 55" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ag)"/>
+
+  <rect x="740" y="18" width="125" height="74" rx="8" fill="#E8F8F2" stroke="#059669" stroke-width="2"/>
+  <text x="802" y="44" fill="#047857" font-family="JetBrains Mono,monospace" font-size="12" font-weight="800" text-anchor="middle">06. GOV</text>
+  <text x="802" y="62" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">Gates &amp; SDK</text>
+  <text x="802" y="78" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">CI/CD + MAESTRO</text>
+</svg>""",
+
+    "9": """<svg viewBox="0 0 880 125" class="slide-svg" role="img" aria-hidden="true">
+  <defs>
+    <marker id="arr-tool" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#BD5D3A"/>
+    </marker>
+  </defs>
+  <rect x="18" y="16" width="360" height="92" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="2"/>
+  <text x="198" y="42" fill="#312E81" font-family="Inter,system-ui,sans-serif" font-size="13" font-weight="800" text-anchor="middle">VULNERABLE SYSTEM (VC / VI / VA)</text>
+  <text x="198" y="62" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="11" font-weight="700" text-anchor="middle">Agent Runtime · Prompt Processing · Memory</text>
+  <text x="198" y="82" fill="#4338CA" font-family="Inter,system-ui,sans-serif" font-size="9.5" text-anchor="middle">PR: Evaluates attacker credential prerequisite, NOT agent's internal token</text>
+  <text x="198" y="96" fill="#4338CA" font-family="Inter,system-ui,sans-serif" font-size="9.5" text-anchor="middle">UI: Autonomous RAG ingestion is strictly UI:N</text>
+
+  <path d="M 378 62 L 458 62" stroke="#BD5D3A" stroke-width="2.5" fill="none" marker-end="url(#arr-tool)"/>
+  <text x="418" y="52" fill="#BD5D3A" font-family="Inter,system-ui,sans-serif" font-size="9.5" font-weight="800" text-anchor="middle">Tool Call / API</text>
+
+  <rect x="468" y="16" width="394" height="92" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="2"/>
+  <text x="665" y="42" fill="#065F46" font-family="Inter,system-ui,sans-serif" font-size="13" font-weight="800" text-anchor="middle">SUBSEQUENT SYSTEMS (SC / SI / SA)</text>
+  <text x="665" y="62" fill="#141413" font-family="Inter,system-ui,sans-serif" font-size="11" font-weight="700" text-anchor="middle">External Databases · CRM APIs · Cloud Infrastructure</text>
+  <text x="665" y="82" fill="#047857" font-family="Inter,system-ui,sans-serif" font-size="9.5" text-anchor="middle">Must score reachable downstream impact across the tool boundary</text>
+  <text x="665" y="96" fill="#047857" font-family="Inter,system-ui,sans-serif" font-size="9.5" text-anchor="middle">Data leaving to attacker-controlled C2 is VC, not SC</text>
+</svg>""",
+
+    "14": """<svg viewBox="0 0 880 135" class="slide-svg" role="img" aria-hidden="true">
+  <defs>
+    <marker id="arr-eff" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#BD5D3A"/>
+    </marker>
+  </defs>
+  <rect x="15" y="12" width="230" height="110" rx="8" fill="#F8FAFC" stroke="#64748B" stroke-width="1.8"/>
+  <text x="130" y="34" fill="#0F172A" font-family="Inter,system-ui,sans-serif" font-size="11" font-weight="800" text-anchor="middle">1. Completeness Check</text>
+  <text x="130" y="54" fill="#BD5D3A" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="800" text-anchor="middle">Are LC, CP, AP, SR known?</text>
+  <text x="130" y="74" fill="#6B6B63" font-family="Inter,system-ui,sans-serif" font-size="9" text-anchor="middle">If any is X (Unknown):</text>
+  <rect x="35" y="82" width="190" height="28" rx="6" fill="#F1F5F9" stroke="#94A3B8"/>
+  <text x="130" y="100" fill="#334155" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="800" text-anchor="middle">Return AX (No Escalation)</text>
+
+  <path d="M 245 67 L 275 67" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-eff)"/>
+
+  <rect x="285" y="12" width="310" height="110" rx="8" fill="#FEF2F2" stroke="#DC2626" stroke-width="1.8"/>
+  <text x="440" y="34" fill="#7F1D1D" font-family="Inter,system-ui,sans-serif" font-size="11" font-weight="800" text-anchor="middle">2. High-Hazard Predicates</text>
+  <text x="440" y="52" fill="#991B1B" font-family="Inter,system-ui,sans-serif" font-size="9.5" text-anchor="middle">Does the evaluated vector satisfy ANY of:</text>
+  <text x="440" y="68" fill="#141413" font-family="JetBrains Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">① AP:L (Lateral Trust Propagation)</text>
+  <text x="440" y="82" fill="#141413" font-family="JetBrains Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">② LC in {D,I} + CP:C (Persistent Poison)</text>
+  <text x="440" y="96" fill="#141413" font-family="JetBrains Mono,monospace" font-size="9" font-weight="700" text-anchor="middle">③ LC:D + SR:R (Reliable Direct Control)</text>
+  <text x="440" y="112" fill="#DC2626" font-family="Inter,system-ui,sans-serif" font-size="9.5" font-weight="800" text-anchor="middle">YES ➔ Assign A2 (Substantial)</text>
+
+  <path d="M 595 67 L 625 67" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-eff)"/>
+
+  <rect x="635" y="12" width="230" height="110" rx="8" fill="#FFFBEB" stroke="#D97706" stroke-width="1.8"/>
+  <text x="750" y="34" fill="#92400E" font-family="Inter,system-ui,sans-serif" font-size="11" font-weight="800" text-anchor="middle">3. Remaining Class Ladder</text>
+  <text x="750" y="54" fill="#B45309" font-family="Inter,system-ui,sans-serif" font-size="9.5" text-anchor="middle">If NOT A2, check baseline:</text>
+  <rect x="650" y="62" width="200" height="24" rx="4" fill="#FEF3C7"/>
+  <text x="750" y="78" fill="#92400E" font-family="JetBrains Mono,monospace" font-size="9.5" font-weight="700" text-anchor="middle">Any &gt; Benign ➔ A1 (Present)</text>
+  <rect x="650" y="92" width="200" height="24" rx="4" fill="#ECFDF5"/>
+  <text x="750" y="108" fill="#065F46" font-family="JetBrains Mono,monospace" font-size="9.5" font-weight="700" text-anchor="middle">All Benign (LC:N..SR:U) ➔ A0</text>
+</svg>""",
+
+    "16": """<svg viewBox="0 0 880 120" class="slide-svg" role="img" aria-hidden="true">
+  <defs>
+    <marker id="arr-ladder" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#BD5D3A"/>
+    </marker>
+  </defs>
+  <rect x="15" y="16" width="155" height="88" rx="8" fill="#FEE2E2" stroke="#B91C1C" stroke-width="1.8"/>
+  <text x="92" y="38" fill="#7F1D1D" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="800" text-anchor="middle">1. CISA KEV</text>
+  <text x="92" y="56" fill="#141413" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">Active (Auth.)</text>
+  <text x="92" y="74" fill="#991B1B" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">Authoritative federal</text>
+  <text x="92" y="88" fill="#991B1B" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">catalog listing</text>
+
+  <path d="M 170 60 L 186 60" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ladder)"/>
+
+  <rect x="190" y="16" width="155" height="88" rx="8" fill="#FECACA" stroke="#DC2626" stroke-width="1.8"/>
+  <text x="267" y="38" fill="#7F1D1D" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="800" text-anchor="middle">2. Vulnrichment</text>
+  <text x="267" y="56" fill="#141413" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">Active Signal</text>
+  <text x="267" y="74" fill="#991B1B" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">CISA ADP confirmed</text>
+  <text x="267" y="88" fill="#991B1B" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">active exploitation</text>
+
+  <path d="M 345 60 L 361 60" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ladder)"/>
+
+  <rect x="365" y="16" width="155" height="88" rx="8" fill="#FFEDD5" stroke="#EA580C" stroke-width="1.8"/>
+  <text x="442" y="38" fill="#9A3412" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="800" text-anchor="middle">3. Org Observed</text>
+  <text x="442" y="56" fill="#141413" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">Local Telemetry</text>
+  <text x="442" y="74" fill="#C2410C" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">Documented local IR</text>
+  <text x="442" y="88" fill="#C2410C" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">essential for non-CVE</text>
+
+  <path d="M 520 60 L 536 60" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ladder)"/>
+
+  <rect x="540" y="16" width="155" height="88" rx="8" fill="#FEF3C7" stroke="#CA8A04" stroke-width="1.8"/>
+  <text x="617" y="38" fill="#854D0E" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="800" text-anchor="middle">4. Proof-of-Concept</text>
+  <text x="617" y="56" fill="#141413" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">PoC Verified</text>
+  <text x="617" y="74" fill="#A16207" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">Public/private PoC</text>
+  <text x="617" y="88" fill="#A16207" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">meets FIRST E:P</text>
+
+  <path d="M 695 60 L 711 60" stroke="#BD5D3A" stroke-width="2" fill="none" marker-end="url(#arr-ladder)"/>
+
+  <rect x="715" y="16" width="150" height="88" rx="8" fill="#F1F5F9" stroke="#64748B" stroke-width="1.8"/>
+  <text x="790" y="38" fill="#334155" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="800" text-anchor="middle">5. None / E:U</text>
+  <text x="790" y="56" fill="#141413" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700" text-anchor="middle">Unreported</text>
+  <text x="790" y="74" fill="#475569" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">No evidence after</text>
+  <text x="790" y="88" fill="#475569" font-family="Inter,system-ui,sans-serif" font-size="8.5" text-anchor="middle">walking ladder</text>
+</svg>"""
+}
+
+# ---------------------------------------------------------------------------
+# SLIDES DATA DEFINITION (23 PRODUCTION SLIDES)
+# ---------------------------------------------------------------------------
+SLIDES_DATA = [
+    {
+        "number": 1,
+        "slide_type": "title",
+        "raw_lines": [
+            "AIVSS 1.0 — Agentic AI Vulnerability Scoring System",
+            "Technical Severity, Agentic AI Profile, and Risk-Based Remediation for Autonomous Systems",
+            "OWASP AIVSS Working Group"
+        ]
+    },
+    {
+        "number": 2,
+        "slide_type": "speaker",
+        "raw_lines": [
+            "About the Author & Project Lead: Ken Huang, CISSP",
+            "• OWASP AIVSS Project Lead and primary author of the AIVSS 1.0 specification",
+            "• Adjunct Professor, University of San Francisco (Cybersecurity & Agentic AI)",
+            "• Fellow & Co-Chair of two Cloud Security Alliance (CSA) AI Safety working groups",
+            "• Core member of the OWASP Top 10 for Large Language Model Applications and Agentic AI",
+            "• Member, AIUC-1 Consortium & Grant Reviewer for Schmidt Sciences",
+            "• Author of 12 published AI & cybersecurity books (Springer, Cambridge, Wiley, Packt)",
+            "• CEO of DistributedApps.ai  ·  Substack: kenhuangus.substack.com  ·  LinkedIn: linkedin.com/in/kenhuang8"
+        ]
+    },
+    {
+        "number": 3,
+        "slide_type": "comparison",
+        "raw_lines": [
+            "The Vulnerability Management Thesis: Conflated Severity vs. Decoupled Control",
+            "Deterministic IT Engineering → Decoupled Non-Deterministic Agentic Control Systems"
+        ]
+    },
+    {
+        "number": 4,
+        "slide_type": "agenda",
+        "raw_lines": ["Master Architecture Roadmap & Course Agenda", "Six core modules spanning technical severity, agentic profiling, and federal remediation"],
+        "agenda": [
+            {"num": "01", "title": "The Three-Layer Architecture & Conformance", "body": "Strict decoupling of technical severity, agentic profile metadata, and remediation timelines across Conformance Levels 1, 2, and 3."},
+            {"num": "02", "title": "CVSS v4.0 Interpretation for Autonomous Agents", "body": "Normative scoring rules for Subsequent Systems (`SC/SI/SA`), Privileges Required (`PR`), and User Interaction (`UI:N`)."},
+            {"num": "03", "title": "The Eight-Metric Agentic AI Profile & Effect Class", "body": "Formal definitions of `LC`, `CP`, `AP`, `SR`, `EX`, `PT`, `CA`, `TD` and the deterministic `A0` / `A1` / `A2` / `AX` rule ladder."},
+            {"num": "04", "title": "SSVC & CISA BOD 26-04 Remediation Timelines", "body": "The authoritative 16-row deployer decision table (`cisa:DT_BOD2604:1.0.0`), exploitation evidence ladder, and the non-normative status of EPSS."},
+            {"num": "05", "title": "OWASP Agentic Top 10 Benchmark & Disclosed CVEs", "body": "Calculator benchmark results across ASI01–ASI10 and in-depth dissection of Microsoft Copilot EchoLeak (`CVE-2025-32711`)."},
+            {"num": "06", "title": "Enterprise Lifecycle Integration, CI/CD Gates & SDK", "body": "Release gates, architectural threat modeling with CSA MAESTRO, and the `aivss-calc` open-source reference implementation."}
+        ]
+    },
+    {
+        "number": 5,
+        "slide_type": "triple",
+        "raw_lines": ["Architecture Layer 1: Normative Technical Severity", "Technical severity computed strictly from CVSS v4.0 vectors without agentic multiplier pollution"],
+        "points": [
+            {"num": "01", "title": "Normative Invariant (AIVSS = CVSS-BTE)", "body": "The numeric severity score is computed entirely from `cvss_vector`. No Agentic AI metric, Effect Class, or remediation timeline modifies the CVSS score. This guarantees backward compatibility with enterprise vulnerability databases and contractual SLAs."},
+            {"num": "02", "title": "Full FIRST Interpolation Engine", "body": "Evaluates MacroVectors across 270 equivalence classes (EQ1–EQ6) partitioning ~15 million CVSS-BTE vectors. Uses exact multi-dimensional interpolation per FIRST `cvss_lookup.js`, strictly prohibiting naive MacroVector ceiling truncations."},
+            {"num": "03", "title": "Threat & Environmental Integrity", "body": "Evaluates Exploit Maturity (`E`) through dated factual intelligence without speculative multipliers. Supports organizational security requirements (CR, IR, AR) and Modified Base metrics without conflating them with agentic behavior."}
+        ]
+    },
+    {
+        "number": 6,
+        "slide_type": "triple",
+        "raw_lines": ["Architecture Layer 2: The Agentic AI Profile", "Eight-metric vector extension capturing autonomous behavior, persistence, and governance assurance"],
+        "points": [
+            {"num": "01", "title": "Dual Metric Group Division", "body": "Four Classifying Metrics (`LC`, `CP`, `AP`, `SR`) evaluate intrinsic execution mechanics and derive the Agentic AI Effect Class. Four Assurance Metrics (`EX`, `PT`, `CA`, `TD`) record architectural boundaries, provider dependencies, financial limits, and auditability."},
+            {"num": "02", "title": "Canonical Vector Syntax", "body": "Transmitted as a standardized companion string: `AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:W/TD:H`. All eight keys are mandatory; unknown values are recorded as `X` (insufficient evidence) to preserve forensic completeness."},
+            {"num": "03", "title": "Parallel Metadata Invariant", "body": "Reported as the `agentic_ai_profile` JSON object alongside the CVSS vector. It informs operational remediation escalation and release gates, but strictly never enters the arithmetic severity computation."}
+        ]
+    },
+    {
+        "number": 7,
+        "slide_type": "triple",
+        "raw_lines": ["Architecture Layer 3: Risk-Based Remediation Urgency", "Decoupling remediation urgency from severity numbers via CISA BOD 26-04 and SSVC"],
+        "points": [
+            {"num": "01", "title": "Revocation of Severity-Driven Deadlines", "body": "CISA BOD 26-04 revoked legacy CVSS-severity-driven federal deadlines (BOD 19-02/22-01), replacing them with Stakeholder-Specific Vulnerability Categorization (SSVC). AIVSS adopts the published deployer table (`cisa:DT_BOD2604:1.0.0`)."},
+            {"num": "02", "title": "Four Factual Decision Inputs", "body": "Remediation urgency keys mechanically on four operational facts: `in_kev` (active exploitation), `publicly_exposed` (network reach), `automatable` (exploit execution path), and `technical_impact` (partial vs. total system compromise)."},
+            {"num": "03", "title": "Transparent Agentic AI Overlay", "body": "A substantial agentic effect (`A2`) advances the baseline remediation timeline by exactly one tier (FSU ➔ 60D, 60D ➔ 14D, 14D ➔ 3D). It stops at the 3-day ceiling and never introduces the forensic triage requirement (3DF)."}
+        ]
+    },
+    {
+        "number": 8,
+        "slide_type": "triple",
+        "raw_lines": ["Conformance Levels & Architectural Boundaries", "Three standardized implementation tiers satisfying diverse enterprise governance requirements"],
+        "points": [
+            {"num": "01", "title": "Level 1 — Core Technical Conformance", "body": "Requires a valid CVSS v4.0 Base vector, complete 8-metric `aivss_vector`, and derived Effect Class (`A0`, `A1`, `A2`, or `AX`). Minimum level required to claim 'AIVSS 1.0 conformant' in advisories and vulnerability databases."},
+            {"num": "02", "title": "Level 2 — Deployer Operational Conformance", "body": "Satisfies Level 1 plus execution of the Layer 3 SSVC / BOD 26-04 deployer decision table (`cisa:DT_BOD2604:1.0.0`). Mandatory for organizations managing operational patch cadences, incident response SLAs, and federal compliance obligations."},
+            {"num": "03", "title": "Level 3 — Enterprise Priority Index (AIVSS-P)", "body": "Satisfies Level 2 plus computation of the internal `AIVSS-P` priority index incorporating business impact, reach, and residual likelihood. Strictly internal to assessing organizations; prohibited from external publication."}
+        ]
+    },
+    {
+        "number": 9,
+        "slide_type": "triple",
+        "raw_lines": ["CVSS v4.0 Interpretation for Autonomous Agents", "Normative interpretation rules mapping autonomous agent architecture into CVSS Base metrics"],
+        "points": [
+            {"num": "01", "title": "Subsequent Systems Across Tool Boundaries", "body": "The agent reasoning runtime is the Vulnerable System. Downstream APIs, databases, CRM systems, and code execution environments reachable via tools are Subsequent Systems (`SC/SI/SA`). Exfiltration to an attacker's C2 server is `VC`, not `SC`."},
+            {"num": "02", "title": "Privileges Required (PR) Measures Attacker", "body": "`PR` reflects credentials the *attacker* must possess to execute the exploit. If an unauthenticated user submits text that exploits a privileged admin agent, `PR` is strictly `None` (`PR:N`), despite the agent's elevated backend service account."},
+            {"num": "03", "title": "User Interaction (UI:N) for Autonomous Ingestion", "body": "When an agent autonomously retrieves poisoned web pages, emails, or tickets via RAG, User Interaction is strictly `None` (`UI:N`). Machine ingestion without human intervention is an autonomous pipeline, not human user interaction."}
+        ]
+    },
+    {
+        "number": 10,
+        "slide_type": "triple",
+        "raw_lines": ["The Four Common CVSS Scoring Errors in Agentic AI", "Critical scoring pitfalls identified during multi-vendor AIVSS benchmark audits"],
+        "points": [
+            {"num": "01", "title": "Underscoring Subsequent System Impacts", "body": "Assessors frequently truncate impact at the agent process boundary, assigning `SC:N/SI:N/SA:N` even when tools hold write access to enterprise CRM or production databases. Downstream blast radius must be reflected in Subsequent System metrics."},
+            {"num": "02", "title": "Confusing Agent Authority with Attacker Prerequisites", "body": "Assigning `PR:H` because the agent possesses root or service admin privileges. This erroneously treats the agent's internal capability as an attacker barrier. The agent's authority informs impact (`VC/VI` or `SC/SI`), not `PR`."},
+            {"num": "03", "title": "Misinterpreting Rubber-Stamp Approvals as UI:N", "body": "If human approval is required on the attack path, assessors must retain `UI:P` or `UI:A`. Record superficial or rubber-stamp review under the narrative and the `ASI09` risk factor, not by improperly clearing User Interaction to `UI:N`."},
+            {"num": "04", "title": "Double-Counting Stochasticity in AT and SR", "body": "Attack Requirements (`AT:P`) applies only to external prerequisite execution conditions under FIRST rules. Stochastic model output does not justify `AT:P`; reproducibility is evaluated independently under `SR` without modifying severity."}
+        ]
+    },
+    {
+        "number": 11,
+        "slide_type": "triple",
+        "raw_lines": ["Classifying Metrics: Language Control & Persistence", "Evaluating direct natural language execution reach and cross-session memory poisoning"],
+        "points": [
+            {"num": "01", "title": "Language-Mediated Control (LC)", "body": "`Direct (D)`: Attacker natural language reaches privileged reasoning or tool paths without mediation. `Indirect (I)`: Ingested via RAG, search, or tool output. `Mediated (M)`: Constrained by strict parsers or fixed schemas. `None (N)`: No language influence."},
+            {"num": "02", "title": "Context Persistence (CP)", "body": "`Cross-session (C)`: Attacker context persists in durable vector stores, databases, or user profiles across sessions. `Session (S)`: Persists across multi-turn context windows, cleared on reset. `None (N)`: Ephemeral execution confined to a single turn."},
+            {"num": "03", "title": "Canonical Poisoning Interaction", "body": "The combination of `LC:I` and `CP:C` represents the canonical indirect memory poisoning flaw (OWASP ASI06), converting passive knowledge stores into permanent dormant attack vectors that hijack future agent sessions."}
+        ]
+    },
+    {
+        "number": 12,
+        "slide_type": "triple",
+        "raw_lines": ["Classifying Metrics: Propagation & Exploit Reliability", "Measuring lateral compromise across trust boundaries and empirical reproducibility"],
+        "points": [
+            {"num": "01", "title": "Agentic Propagation (AP)", "body": "`Lateral (L)`: Compromised instructions, memory, or authority cross trust boundaries to sibling agents, tenants, or downstream services. `Contained (C)`: Spreads within the agent's own tool scope. `None (N)`: Exploitation is strictly isolated."},
+            {"num": "02", "title": "Stochastic Exploit Reliability (SR)", "body": "`Reliable (R)`: Deterministic exploit reproduction (≥80% success or free retries). `Probabilistic (P)`: Variable reproduction (20%–80%) sensitive to model sampling. `Unreliable (U)`: Low reproducibility (<20%) or execution paths penalizing retries."},
+            {"num": "03", "title": "Empirical Statistical Grounding", "body": "In production benchmarks, `SR:R` requires rigorous empirical verification (e.g. 30/30 independent test episodes from clean state, Wilson score lower bound ≥ 0.90), preventing reliance on unverified single-shot demonstrations."}
+        ]
+    },
+    {
+        "number": 13,
+        "slide_type": "triple",
+        "raw_lines": ["Assurance & Governance Metrics (EX, PT, CA, TD)", "Parallel metadata evaluating extension boundaries, provider reliance, cost ceilings, and auditability"],
+        "points": [
+            {"num": "01", "title": "Extension Surface (EX) & Provider Trust (PT)", "body": "`EX`: `Wide (W)` (unpinned, dynamic MCP tools), `Managed (M)` (pinned, vetted allowlists with external authorization), `None (N)`. `PT`: `High (H)` (unaudited third-party model routing), `Moderate (M)`, `Low (L)` (fully verifiable weights/premises)."},
+            {"num": "02", "title": "Cost Abuse Surface (CA)", "body": "Evaluates vulnerability to denial-of-wallet attacks and recursive loops. `Wide (W)`: No hard pre-execution aggregate ceiling. `Moderate (M)`: Unit limits exist but lack tenant-wide aggregation. `Narrow (N)`: Tested fail-closed aggregate resource ceilings."},
+            {"num": "03", "title": "Traceability Deficit (TD — Agent Untraceability)", "body": "Retains the foundational OWASP AIVSS Agent Untraceability risk factor. `High (H)`: Post-incident reconstruction of agent decisions, prompts, and tool calls is infeasible. `Medium (M)`: Ordered events reconstructable without integrity. `Low (L)`: Tamper-evident audit logs."}
+        ]
+    },
+    {
+        "number": 14,
+        "slide_type": "comparison",
+        "raw_lines": [
+            "The Agentic AI Effect Class Rule Ladder",
+            "Deterministic classification ladder summarizing agentic hazard for operational policy"
+        ]
+    },
+    {
+        "number": 15,
+        "slide_type": "table",
+        "raw_lines": ["SSVC Deployer Table 1 — CISA BOD 26-04 (16 Rows)", "The authoritative 16-row decision matrix operationalizing CISA BOD 26-04 remediation timelines"],
+        "table_headers": ["Row", "In KEV", "Publicly Exposed", "Automatable", "Technical Impact", "BOD Baseline Timeline", "A2 Overlay Timeline"],
+        "table_rows": [
+            ["1", "No", "No", "No", "Partial", "Fix on System Upgrade (FSU)", "Remediate in 60 Days (60D)"],
+            ["2", "Yes", "No", "No", "Partial", "Remediate in 14 Days (14D)", "Remediate in 3 Days (3D)"],
+            ["3", "No", "Yes", "No", "Partial", "Remediate in 60 Days (60D)", "Remediate in 14 Days (14D)"],
+            ["4", "No", "No", "Yes", "Partial", "Remediate in 60 Days (60D)", "Remediate in 14 Days (14D)"],
+            ["5", "No", "No", "No", "Total", "Fix on System Upgrade (FSU)", "Remediate in 60 Days (60D)"],
+            ["6", "Yes", "Yes", "No", "Partial", "Remediate in 14 Days (14D)", "Remediate in 3 Days (3D)"],
+            ["7", "Yes", "No", "Yes", "Partial", "Remediate in 14 Days (14D)", "Remediate in 3 Days (3D)"],
+            ["8", "No", "Yes", "Yes", "Partial", "Remediate in 14 Days (14D)", "Remediate in 3 Days (3D)"],
+            ["9", "Yes", "No", "No", "Total", "Remediate in 14 Days (14D)", "Remediate in 3 Days (3D)"],
+            ["10", "No", "Yes", "No", "Total", "Remediate in 14 Days (14D)", "Remediate in 3 Days (3D)"],
+            ["11", "No", "No", "Yes", "Total", "Remediate in 60 Days (60D)", "Remediate in 14 Days (14D)"],
+            ["12", "Yes", "Yes", "Yes", "Partial", "Remediate in 3 Days (3D)", "Remediate in 3 Days (3D) [Ceiling]"],
+            ["13", "Yes", "Yes", "No", "Total", "3 Days + Forensic Triage (3DF)", "3 Days + Forensic Triage (3DF)"],
+            ["14", "Yes", "No", "Yes", "Total", "3 Days + Forensic Triage (3DF)", "3 Days + Forensic Triage (3DF)"],
+            ["15", "No", "Yes", "Yes", "Total", "Remediate in 3 Days (3D)", "Remediate in 3 Days (3D) [Ceiling]"],
+            ["16", "Yes", "Yes", "Yes", "Total", "3 Days + Forensic Triage (3DF)", "3 Days + Forensic Triage (3DF)"]
+        ]
+    },
+    {
+        "number": 16,
+        "slide_type": "triple",
+        "raw_lines": ["The Exploitation Evidence Ladder & EPSS Governance", "Strict precedence rules for exploitation intelligence and the non-normative status of EPSS"],
+        "points": [
+            {"num": "01", "title": "Strict Factual Evidence Ladder", "body": "Exploitation evidence follows an immutable hierarchy: (1) CISA KEV (authoritative active), (2) CISA Vulnrichment active, (3) Organization-observed activity (local telemetry), (4) Public/Private PoC, (5) No evidence (`E:U`). Guessing or timeout defaults are prohibited."},
+            {"num": "02", "title": "Why EPSS Does Not Alter Scoring", "body": "BOD 26-04 does not use EPSS. EPSS estimates 30-day statistical probability, not observed fact. Daily forecast shifts destroy reproducibility. AIVSS records `epss` and `epss_date` as audit metadata, strictly prohibiting it from changing severity or timeline."},
+            {"num": "03", "title": "Federal Obligation vs. Commercial Analogy", "body": "For FCEB agencies and in-scope CVEs, the SSVC deployer lookup (`cisa:BOD2604:1.0.0`) is a binding federal obligation. For non-CVE agentic vulnerabilities and commercial deployments, Layer 3 outputs are formally reported as `informative_bod_26_04_analogy`."}
+        ]
+    },
+    {
+        "number": 17,
+        "slide_type": "table",
+        "raw_lines": ["OWASP Agentic AI Top 10 — Benchmark Calculator Results", "Verified reference calculator outputs across all ten OWASP ASI reference scenarios from aivss-calc"],
+        "table_headers": ["Risk ID", "Scenario Title", "CVSS-BTE Score", "Agentic Profile Vector", "Effect Class", "BOD 26-04 Baseline", "AIVSS Recommended Timeline"],
+        "table_rows": [
+            ["ASI01", "Direct prompt injection hijacks planning agent goals", "9.2 (Critical)", "LC:D / CP:S / AP:C / SR:R / EX:M / PT:M / CA:M / TD:M", "A2", "3 Days (3D)", "3 Days (3D) [Baseline Ceiling]"],
+            ["ASI02", "Agent misuses legitimate tool for unauthorized export", "8.3 (High)", "LC:I / CP:N / AP:C / SR:R / EX:M / PT:M / CA:M / TD:L", "A1", "3 Days (3D)", "3 Days (3D) [A1 Preserves BOD]"],
+            ["ASI03", "Stolen service credential used for lateral agent actions", "8.5 (High)", "LC:M / CP:N / AP:L / SR:R / EX:M / PT:M / CA:N / TD:L", "A2", "60 Days (60D)", "14 Days (14D) [Escalated by A2]"],
+            ["ASI04", "Compromised MCP plugin supplies malicious tool schemas", "8.8 (High)", "LC:I / CP:N / AP:L / SR:P / EX:W / PT:H / CA:M / TD:M", "A2", "14 Days (14D)", "3 Days (3D) [Escalated by A2]"],
+            ["ASI05", "Code interpreter executes attacker-supplied shell commands", "8.9 (High)", "LC:D / CP:N / AP:N / SR:R / EX:M / PT:M / CA:W / TD:L", "A2", "3 Days (3D)", "3 Days (3D) [Baseline Ceiling]"],
+            ["ASI06", "Adversarial content in agent memory biases later sessions", "7.8 (High)", "LC:D / CP:C / AP:L / SR:R / EX:W / PT:H / CA:M / TD:H", "A2", "3 Days (3D)", "3 Days (3D) [Baseline Ceiling]"],
+            ["ASI07", "Unsigned agent-to-agent messages allow instruction relay", "7.1 (High)", "LC:I / CP:S / AP:L / SR:R / EX:W / PT:H / CA:M / TD:M", "A2", "60 Days (60D)", "14 Days (14D) [Escalated by A2]"],
+            ["ASI08", "Faulty planner triggers cascading downstream task failures", "7.9 (High)", "LC:I / CP:S / AP:L / SR:P / EX:W / PT:M / CA:W / TD:H", "A2", "14 Days (14D)", "3 Days (3D) [Escalated by A2]"],
+            ["ASI09", "Social engineering of human approver via forged summaries", "7.0 (High)", "LC:D / CP:N / AP:C / SR:P / EX:N / PT:L / CA:N / TD:H", "A1", "60 Days (60D)", "60 Days (60D) [A1 Preserves BOD]"],
+            ["ASI10", "Compromised worker agent operates outside policy envelope", "8.6 (High)", "LC:D / CP:C / AP:L / SR:R / EX:W / PT:H / CA:W / TD:H", "A2", "3 Days (3D)", "3 Days (3D) [Baseline Ceiling]"]
+        ]
+    },
+    {
+        "number": 18,
+        "slide_type": "code",
+        "raw_lines": [
+            "Real-World Case Study: CVE-2025-32711 (EchoLeak)",
+            "Resolving CVSS v3.1 scope discrepancies and scoring zero-click RAG injection in Microsoft Copilot"
+        ],
+        "file_tag": "echoleak-assessment.json",
+        "lang_tag": "JSON",
+        "highlight_lines": [3, 8, 14, 18],
+        "code_lines": [
+            '{',
+            '  "finding_id": "CVE-2025-32711",',
+            '  "title": "EchoLeak Zero-Click Indirect Injection in M365 Copilot",',
+            '  "cvss": {',
+            '    "version": "4.0",',
+            '    "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:L/VA:N/SC:H/SI:N/SA:N/E:U",',
+            '    "macrovector": "001120",',
+            '    "cvss_bte": 7.8,',
+            '    "qualitative_severity": "High"',
+            '  },',
+            '  "agentic_ai_profile": {',
+            '    "vector": "AIVSS:1.0/LC:I/CP:C/AP:N/SR:P/EX:W/PT:L/CA:N/TD:H",',
+            '    "agentic_effect_class": "A2",',
+            '    "class_rationale": "LC is Indirect (I) and CP is Cross-Session (C)"',
+            '  },',
+            '  "decision": {',
+            '    "in_kev": false, "publicly_exposed": true,',
+            '    "automatable": true, "technical_impact": "total",',
+            '    "bod_2604_timeline": "3D",',
+            '    "aivss_recommended_timeline": "3D"',
+            '  }',
+            '}'
+        ],
+        "concepts": [
+            {
+                "tag": "CVSS 3.1 CONFLICT RESOLVED",
+                "title": "Subsequent System Integrity",
+                "desc": "Microsoft published CVSS v3.1 9.3 (Critical, Scope Changed) while NVD published 7.5 (High, Scope Unchanged). AIVSS v4.0 resolves this: SharePoint/Teams stores are scored as Subsequent Systems (`SC:H`), producing an objective 7.8."
+            },
+            {
+                "tag": "AUTONOMOUS RAG",
+                "title": "Zero-Click Ingestion (UI:N)",
+                "desc": "Autonomous document and email ingestion via background RAG indexing requires zero human interaction. AIVSS strictly enforces `UI:N`, eliminating improper reliance on human interaction credits."
+            },
+            {
+                "tag": "PERSISTENT POISON",
+                "title": "A2 Effect Class Derivation",
+                "desc": "Indirect language control (`LC:I`) combined with cross-session email persistence (`CP:C`) triggers the `A2` rule. While A2 advocates rapid patching, the BOD 26-04 baseline is already at the 3-day ceiling (3D)."
+            }
+        ],
+        "invariant": "AIVSS equals CVSS-BTE (7.8). Microsoft's 9.3 and NVD's 7.5 are superseded by CVSS v4.0 multi-system modeling. Remediation stops at the CISA 3-day ceiling without inventing unverified deadlines."
+    },
+    {
+        "number": 19,
+        "slide_type": "code",
+        "raw_lines": [
+            "Synthetic Deep Dive: ASI06 Memory & Context Poisoning",
+            "Walkthrough of cross-session context corruption and Wilson lower-bound empirical reliability"
+        ],
+        "file_tag": "examples/asi06-example.json",
+        "lang_tag": "JSON",
+        "highlight_lines": [6, 12, 16],
+        "code_lines": [
+            '{',
+            '  "finding_id": "AIVSS-ASI06-001",',
+            '  "risk_category": "ASI06",',
+            '  "title": "Adversarial content in agent memory biases later sessions",',
+            '  "cvss_vector": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P",',
+            '  "aivss_vector": "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H",',
+            '  "cvss_bte": 7.8,',
+            '  "agentic_ai_profile": {',
+            '    "effect_class": "A2",',
+            '    "metrics": {',
+            '      "CP": {"value": "C", "label": "Cross-session persistence"},',
+            '      "AP": {"value": "L", "label": "Lateral trust boundary propagation"},',
+            '      "SR": {',
+            '        "value": "R", "episodes": 30, "successes": 30,',
+            '        "wilson_lower_bound": 0.917',
+            '      }',
+            '    }',
+            '  },',
+            '  "decision": {',
+            '    "bod_2604_timeline": "3D",',
+            '    "aivss_recommended_timeline": "3D"',
+            '  }',
+            '}'
+        ],
+        "concepts": [
+            {
+                "tag": "DURABLE CONTAMINATION",
+                "title": "Cross-Session Context Persistence (CP:C)",
+                "desc": "Adversarial text planted in the agent's persistent vector memory survives across user sessions, creating a dormant execution vector that contaminates subsequent legitimate planning tasks."
+            },
+            {
+                "tag": "LATERAL SPREAD",
+                "title": "Multi-Agent Propagation (AP:L)",
+                "desc": "Contaminated context crosses organizational trust boundaries as sibling worker agents ingest poisoned memory records, executing unauthorized tool calls on behalf of different principals."
+            },
+            {
+                "tag": "STATISTICAL RIGOR",
+                "title": "Wilson Lower-Bound Verification (SR:R)",
+                "desc": "Tested across 30 consecutive clean-state episodes with a hard budget of 3 attempts. With 30/30 successes, the one-sided 95% Wilson lower bound is 0.917, proving reliable determinism."
+            }
+        ],
+        "invariant": "Reference calculator verification: `aivss-calc assess examples/asi06-example.json` passes schema validation, reports normative AIVSS 7.8, derives Effect Class A2, and confirms 3D remediation."
+    },
+    {
+        "number": 20,
+        "slide_type": "comparison",
+        "raw_lines": [
+            "AIVSS-P — Organizational Priority Index (Level 3)",
+            "Optional mathematical index combining technical severity with business impact and reach"
+        ]
+    },
+    {
+        "number": 21,
+        "slide_type": "triple",
+        "raw_lines": ["Enterprise Lifecycle Integration & Release Gates", "Operational touchpoints and automated policy gates across the agent engineering lifecycle"],
+        "points": [
+            {"num": "01", "title": "Design & Pre-Commit Governance", "body": "Architectural threat modeling using the CSA MAESTRO framework to identify agentic risks beyond the fixed Top 10. Static audit of tool manifests, pinning MCP schemas, and enforcing least-privilege credential bounds (`EX:M`)."},
+            {"num": "02", "title": "Build & CI/CD Verification", "body": "Automated execution of `aivss-calc verify` and test suites in pull request pipelines. Schema validation of assessment fixtures against `aivss-assessment-input-v1.0.json` before merging agent capability changes."},
+            {"num": "03", "title": "Automated Release Blocking Gates", "body": "Enforce three hard release gates: Gate 1 blocks releases with `CVSS-BTE >= 9.0`; Gate 2 blocks any uncontained `A2` Effect Class on publicly exposed agents; Gate 3 blocks unpinned dynamic tools (`EX:W`) or untraceable runtimes (`TD:H`)."}
+        ]
+    },
+    {
+        "number": 22,
+        "slide_type": "code",
+        "raw_lines": [
+            "Reference Implementation & Tooling (aivss-calc)",
+            "Open-source CLI calculator, Python SDK, JSON schemas, and automated test suite"
+        ],
+        "file_tag": "terminal-session.sh",
+        "lang_tag": "BASH",
+        "highlight_lines": [2, 7, 13, 17],
+        "code_lines": [
+            '# 1. Install the verified AIVSS 1.0 calculator package',
+            'pip install -e ".[dev]"',
+            '',
+            '# 2. Run the automated test suite (127 test cases passing)',
+            'pytest tests/test_aivss.py -v',
+            '',
+            '# 3. Assess a structured finding against normative scoring and SSVC',
+            'aivss-calc assess examples/asi06-example.json',
+            '',
+            '# 4. Verify vector syntax and compute standalone severity',
+            'aivss-calc score "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P"',
+            '',
+            '# 5. Evaluate SSVC deployer decision table with dated EPSS metadata',
+            'aivss-calc decide --epss 0.42 --epss-date 2026-08-27 \\',
+            '  --publicly-exposed true --automatable true \\',
+            '  --technical-impact total --kev false',
+            '',
+            '# 6. Verify full package integrity and schema compliance',
+            'aivss-calc verify'
+        ],
+        "concepts": [
+            {
+                "tag": "127 PYTEST CASES",
+                "title": "Exhaustive Engine Verification",
+                "desc": "100% test coverage across MacroVector interpolation, 16-row SSVC deployer tables, Wilson confidence interval bounds, vector regex syntax, and JSON report schema adherence."
+            },
+            {
+                "tag": "FIRST COMPLIANT",
+                "title": "Exact Floating-Point Precision",
+                "desc": "Reproduces FIRST JavaScript lookup tables and multi-dimensional interpolation to the exact floating-point digit, completely eliminating MacroVector ceiling round-off errors."
+            },
+            {
+                "tag": "ECOSYSTEM ALIGNMENT",
+                "title": "FLARE-AI & Akrites Co-Operation",
+                "desc": "Seamlessly integrates with FLARE-AI for automated agentic flaw intake and triage routing, and Akrites for coordinated open-source vulnerability remediation."
+            }
+        ],
+        "invariant": "GitHub Repository: <a href='https://github.com/kenhuangus/aivss-v1-candidate' target='_blank'>kenhuangus/aivss-v1-candidate</a>. All code, schemas, documentation, and test fixtures are open-source under Apache 2.0."
+    },
+    {
+        "number": 23,
+        "slide_type": "thanks",
+        "raw_lines": [
+            "Thank You",
+            "AIVSS 1.0 — Agentic AI Vulnerability Scoring System",
+            "github.com/kenhuangus/aivss-v1-candidate · aivss.owasp.org"
+        ]
+    }
+]
+
+# ---------------------------------------------------------------------------
+# JAVASCRIPT RENDERING ENGINE
+# ---------------------------------------------------------------------------
+JS_CODE = r"""
+    const slidesData = SLIDES_JSON;
+    const svgMap = SVG_JSON;
+    const totalSlides = slidesData.length;
+    let currentIdx = 0;
+    let isGridMode = false;
+    const selectEl = document.getElementById('slide-select');
+    const bodyEl = document.getElementById('slide-body');
+
+    slidesData.forEach((s, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = s.number + '. ' + (s.raw_lines[0] || 'Slide');
+      selectEl.appendChild(opt);
+    });
+    const gotoInput = document.getElementById('goto-input');
+    if (gotoInput) {
+      gotoInput.max = String(totalSlides);
+      gotoInput.title = 'Enter slide number (1-' + totalSlides + ')';
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+    function rich(s) {
+      return esc(s)
+        .replace(/https:\/\/[^\s<]+/g, (m) => '<a href="' + m + '" target="_blank" rel="noopener noreferrer">' + m + '</a>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+    }
+    function formatBullets(lines) {
+      let html = '<ul class="main-bullets">';
+      lines.forEach((line) => {
+        const t = line.replace(/^[•\-\*]\s*/, '').trim();
+        if (t) html += '<li class="bullet-group"><div class="primary-bullet">' + rich(t) + '</div></li>';
+      });
+      html += '</ul>';
+      return html;
+    }
+
+    function svgFor(n) {
+      return svgMap[String(n)] || '';
+    }
+
+    function renderTitle() {
+      return `
+        <div id="slide-content-wrap" class="slide-1-container idea-slide">
+          ${svgFor(1)}
+          <div class="slide-1-instructor-card">
+            <div class="slide-1-avatar-wrap">
+              <img src="assets/images/ken-head-shot.png" alt="Ken Huang" class="slide-1-avatar-img" />
+            </div>
+            <div class="slide-1-instructor-info">
+              <div class="slide-1-instructor-badge"><span>Project Lead &middot; OWASP AIVSS</span></div>
+              <div class="slide-1-instructor-name">Ken Huang, CISSP</div>
+              <div class="slide-1-instructor-titles">
+                <div class="slide-1-title-item">
+                  <span class="title-icon">🏛️</span>
+                  <span>Adjunct Professor, <span class="slide-1-title-highlight">University of San Francisco</span></span>
+                </div>
+                <div class="slide-1-title-item">
+                  <span class="title-icon">🛡️</span>
+                  <span>Fellow &amp; Co-Chair, <span class="slide-1-title-highlight">Cloud Security Alliance (CSA) AI Safety</span></span>
+                </div>
+                <div class="slide-1-title-item">
+                  <span class="title-icon">🚀</span>
+                  <span>Core Contributor, <span class="slide-1-title-highlight">OWASP Top 10 for LLM &amp; Agentic AI</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="slide-1-pillars-row">
+            <div class="slide-1-pillar-pill">
+              <div class="slide-1-pillar-title"><span>⚖️</span> Layer 1: Normative Severity</div>
+              <div class="slide-1-pillar-desc">AIVSS = CVSS-BTE strictly unpolluted by agentic multipliers.</div>
+            </div>
+            <div class="slide-1-pillar-pill">
+              <div class="slide-1-pillar-title"><span>🧬</span> Layer 2: Agentic Profile</div>
+              <div class="slide-1-pillar-desc">8-metric vector (LC..TD) + Effect Class (A0, A1, A2).</div>
+            </div>
+            <div class="slide-1-pillar-pill">
+              <div class="slide-1-pillar-title"><span>⏱️</span> Layer 3: CISA BOD 26-04</div>
+              <div class="slide-1-pillar-desc">16-row deployer table determining remediation urgency.</div>
+            </div>
+            <div class="slide-1-pillar-pill">
+              <div class="slide-1-pillar-title"><span>💻</span> aivss-calc Reference</div>
+              <div class="slide-1-pillar-desc">Open-source Python SDK &amp; CLI with 127 verified pytest tests.</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderSpeaker(slide) {
+      const rest = (slide.raw_lines || []).slice(1);
+      return `
+        <div id="slide-content-wrap" class="instructor-slide-grid">
+          <div class="instructor-info-col">
+            ${formatBullets(rest)}
+          </div>
+          <div class="author-books-card">
+            <div class="author-books-header">
+              <span>📚 AI Books &amp; Academic Publications (Springer · Cambridge · Wiley · Packt)</span>
+              <a href="https://www.amazon.com/stores/author/B0D3J7L7GN" target="_blank" rel="noopener noreferrer">Amazon Author Page ➔</a>
+            </div>
+            <div class="books-gallery-grid">
+              <a href="https://www.amazon.com/dp/3031900251" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Agentic AI: Theories and Practices (Springer)">
+                <img src="assets/images/books/springer_agentic_ai.jpg" alt="Agentic AI (Springer)" class="book-cover-img" />
+                <div class="book-item-title">Agentic AI</div>
+                <div class="book-publisher-tag">SPRINGER</div>
+              </a>
+              <a href="https://www.amazon.com/dp/3031448839" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Beyond AI (Springer)">
+                <img src="assets/images/books/springer_beyond_ai.jpg" alt="Beyond AI (Springer)" class="book-cover-img" />
+                <div class="book-item-title">Beyond AI</div>
+                <div class="book-publisher-tag">SPRINGER</div>
+              </a>
+              <a href="https://www.amazon.com/dp/3031542517" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Generative AI Security (Springer)">
+                <img src="assets/images/books/springer_generative_ai_security.jpg" alt="GenAI Security (Springer)" class="book-cover-img" />
+                <div class="book-item-title">GenAI Security</div>
+                <div class="book-publisher-tag">SPRINGER</div>
+              </a>
+              <a href="https://www.amazon.com/dp/3031901002" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Securing AI Agents (Springer)">
+                <img src="assets/images/books/springer_securing_ai_agents.jpg" alt="Securing AI Agents" class="book-cover-img" />
+                <div class="book-item-title">Securing Agents</div>
+                <div class="book-publisher-tag">SPRINGER</div>
+              </a>
+              <a href="https://www.amazon.com/dp/1009384467" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Web3 (Cambridge)">
+                <img src="assets/images/books/cambridge_web3.jpg" alt="Web3 (Cambridge UP)" class="book-cover-img" />
+                <div class="book-item-title">Web3 &amp; Economy</div>
+                <div class="book-publisher-tag">CAMBRIDGE</div>
+              </a>
+              <a href="https://www.amazon.com/dp/1394186524" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Blockchain and Web3 (Wiley)">
+                <img src="assets/images/books/wiley_blockchain_web3.jpg" alt="Blockchain & Web3 (Wiley)" class="book-cover-img" />
+                <div class="book-item-title">Blockchain Web3</div>
+                <div class="book-publisher-tag">WILEY</div>
+              </a>
+              <a href="https://www.amazon.com/dp/B0HF3F86YM" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Harness Engineering">
+                <img src="assets/images/books/harness_engineering.jpg" alt="Harness Engineering" class="book-cover-img" />
+                <div class="book-item-title">Harness Eng.</div>
+                <div class="book-publisher-tag">BEST SELLER</div>
+              </a>
+              <a href="https://www.amazon.com/dp/1807785017" target="_blank" rel="noopener noreferrer" class="book-item-card" title="OpenClaw AI in Production">
+                <img src="assets/images/books/openclaw_ai_in_production.jpg" alt="OpenClaw AI in Production" class="book-cover-img" />
+                <div class="book-item-title">OpenClaw AI</div>
+                <div class="book-publisher-tag">PACKT</div>
+              </a>
+              <a href="https://www.amazon.com/dp/B0H8JW9XFN" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Engineering Agentic AI with Claude">
+                <img src="assets/images/books/engineering_agentic_ai_claude.jpg" alt="Engineering Agentic AI with Claude" class="book-cover-img" />
+                <div class="book-item-title">Agentic Claude</div>
+                <div class="book-publisher-tag">CLAUDE AI</div>
+              </a>
+              <a href="https://www.amazon.com/dp/1836207034" target="_blank" rel="noopener noreferrer" class="book-item-card" title="LLM Design Patterns">
+                <img src="assets/images/books/llm_design_patterns.jpg" alt="LLM Design Patterns" class="book-cover-img" />
+                <div class="book-item-title">LLM Patterns</div>
+                <div class="book-publisher-tag">PACKT</div>
+              </a>
+              <a href="https://www.amazon.com/dp/B0H13XWS8W" target="_blank" rel="noopener noreferrer" class="book-item-card" title="Agentic AI Harness Pattern">
+                <img src="assets/images/books/agentic_ai_harness_pattern.jpg" alt="Agentic AI Harness Pattern" class="book-cover-img" />
+                <div class="book-item-title">AI Harness</div>
+                <div class="book-publisher-tag">PATTERNS</div>
+              </a>
+              <a href="https://www.amazon.com/dp/B0DCBDGNTN" target="_blank" rel="noopener noreferrer" class="book-item-card" title="The Layperson's Handbook to Generative AI">
+                <img src="assets/images/books/laypersons_handbook_genai.jpg" alt="Handbook to GenAI" class="book-cover-img" />
+                <div class="book-item-title">GenAI Guide</div>
+                <div class="book-publisher-tag">HANDBOOK</div>
+              </a>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderAgenda(slide) {
+      const rows = (slide.agenda || []).map((row) => `
+        <div class="agenda-row">
+          <div class="agenda-num">${esc(row.num)}</div>
+          <div class="agenda-copy">
+            <div class="agenda-title">${esc(row.title)}</div>
+            <div class="agenda-body">${rich(row.body)}</div>
+          </div>
+        </div>`).join('');
+      return `<div id="slide-content-wrap" class="idea-slide">${svgFor(slide.number)}<div class="agenda-stack">${rows}</div></div>`;
+    }
+
+    function renderSection(slide) {
+      return `
+        <div id="slide-content-wrap" class="section-slide idea-slide">
+          <div class="section-title">${esc(slide.raw_lines[0] || '')}</div>
+          <div class="section-sub">${esc(slide.raw_lines[1] || '')}</div>
+          ${svgFor(slide.number)}
+        </div>`;
+    }
+
+    function renderTriple(slide) {
+      const cards = (slide.points || []).map((p) => `
+        <div class="triple-card">
+          <div class="triple-num">${esc(p.num)}</div>
+          <div class="triple-title">${esc(p.title)}</div>
+          <div class="triple-body">${rich(p.body)}</div>
+        </div>`).join('');
+      return `
+        <div id="slide-content-wrap" class="idea-slide">
+          ${svgFor(slide.number)}
+          <div class="triple-lead">${esc(slide.raw_lines[1] || '')}</div>
+          <div class="triple-grid">${cards}</div>
+        </div>`;
+    }
+
+    function renderComparison(slide) {
+      if (slide.number === 3) {
+        return `
+          <div id="slide-content-wrap" class="thesis-slide-wrap">
+            ${svgFor(3)}
+            <div class="thesis-grid">
+              <div class="thesis-card trad-card">
+                <div class="thesis-card-header trad-header">
+                  <span class="thesis-icon">🏛️</span>
+                  <div>
+                    <div class="thesis-title">Legacy Vulnerability Management</div>
+                    <div class="thesis-subtitle">Conflated Severity, Exposure, Threat &amp; Remediation</div>
+                  </div>
+                  <span class="thesis-badge trad-badge">CONFLATED MODEL</span>
+                </div>
+                <div class="thesis-card-body">
+                  <div class="thesis-point"><strong>🎯 Monolithic Score Trap:</strong> Forces technical severity, exposure context, environmental consequence, and patch SLAs into a single scalar number.</div>
+                  <div class="thesis-point"><strong>⚠️ Arithmetic Distortion:</strong> Adding arbitrary multiplier algorithms to CVSS Base scores breaks compliance baselines and distorts established vendor SLAs.</div>
+                  <div class="thesis-point"><strong>🔒 Operational Disconnect:</strong> High severity scores frequently lack active exploitation, while low-severity flaws in exposed autonomous agents trigger catastrophic lateral cascades.</div>
+                </div>
+              </div>
+              <div class="thesis-card harn-card">
+                <div class="thesis-card-header harn-header">
+                  <span class="thesis-icon">🛡️</span>
+                  <div>
+                    <div class="thesis-title">AIVSS 1.0 Decoupled Architecture</div>
+                    <div class="thesis-subtitle">Three Independent, Interoperable, Standardized Layers</div>
+                  </div>
+                  <span class="thesis-badge harn-badge">DECOUPLED THREE-LAYER MODEL</span>
+                </div>
+                <div class="thesis-card-body">
+                  <div class="thesis-point"><strong>⚖️ Layer 1 (AIVSS = CVSS-BTE):</strong> Technical severity remains 100% compliant with FIRST CVSS v4.0 specifications, preserving contractual compliance and tooling integration.</div>
+                  <div class="thesis-point"><strong>🧬 Layer 2 (Agentic Profile):</strong> Standardized 8-metric vector (<code>LC</code>..<code>TD</code>) and derived Effect Class (<code>A0/A1/A2</code>) characterize autonomous behaviors as parallel metadata.</div>
+                  <div class="thesis-point"><strong>⏱️ Layer 3 (CISA BOD 26-04 / SSVC):</strong> Remediation timelines are determined by factual exploitation evidence, public exposure, and mission impact via an authoritative 16-row deployer table.</div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      } else if (slide.number === 14) {
+        return `
+          <div id="slide-content-wrap" class="thesis-slide-wrap">
+            ${svgFor(14)}
+            <div class="thesis-grid">
+              <div class="thesis-card trad-card">
+                <div class="thesis-card-header trad-header">
+                  <span class="thesis-icon">📐</span>
+                  <div>
+                    <div class="thesis-title">Formal Rule Ladder &amp; Hazard Predicates</div>
+                    <div class="thesis-subtitle">Deterministic Derivation: AX ➔ A2 ➔ A1 ➔ A0</div>
+                  </div>
+                  <span class="thesis-badge trad-badge">CLASSIFICATION RULES</span>
+                </div>
+                <div class="thesis-card-body">
+                  <div class="thesis-point"><strong>🔍 Step 1 (Completeness Check):</strong> If any classifying metric (<code>LC</code>, <code>CP</code>, <code>AP</code>, or <code>SR</code>) is <code>X</code> (Unknown), return <code>AX</code> immediately. No class escalation is permitted.</div>
+                  <div class="thesis-point"><strong>⚡ Step 2 (A2 Critical Hazards):</strong> Assigned if fully evaluated vector meets ANY of: (1) <code>AP:L</code> (Lateral Propagation across trust boundaries); (2) <code>LC in {D,I}</code> with <code>CP:C</code> (Language-reachable persistent memory poison); or (3) <code>LC:D</code> with <code>SR:R</code> (Direct reliable execution control).</div>
+                  <div class="thesis-point"><strong>🛡️ Step 3 (A1 &amp; A0):</strong> If not A2, assign <code>A1</code> if any metric is above benign (<code>LC≠N</code>, <code>CP≠N</code>, <code>AP≠N</code>, or <code>SR≠U</code>). Assign <code>A0</code> only when all evaluated classifying metrics are strictly benign.</div>
+                </div>
+              </div>
+              <div class="thesis-card harn-card">
+                <div class="thesis-card-header harn-header">
+                  <span class="thesis-icon">⚖️</span>
+                  <div>
+                    <div class="thesis-title">Governance Significance &amp; Policy Invariants</div>
+                    <div class="thesis-subtitle">Actionable Risk Summaries for Enterprise CI/CD Gates</div>
+                  </div>
+                  <span class="thesis-badge harn-badge">OPERATIONAL GOVERNANCE</span>
+                </div>
+                <div class="thesis-card-body">
+                  <div class="thesis-point"><strong>🔒 Zero Severity Mutation:</strong> The Effect Class never modifies the numeric CVSS-BTE score. An A2 vulnerability with CVSS 5.0 remains exactly 5.0, preventing arithmetic score inflation.</div>
+                  <div class="thesis-point"><strong>⏱️ Layer 3 Remediation Trigger:</strong> An <code>A2</code> classification serves as the sole trigger for Layer 3 SSVC deployer timeline advancement, elevating urgency without guessing.</div>
+                  <div class="thesis-point"><strong>🛑 Automated Release Blocking:</strong> Enables enterprise SecOps to establish automated CI/CD gating: block deployment of any agent with an unmitigated A2 finding on a publicly reachable endpoint.</div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      } else if (slide.number === 20) {
+        return `
+          <div id="slide-content-wrap" class="thesis-slide-wrap">
+            <div class="thesis-grid">
+              <div class="thesis-card trad-card">
+                <div class="thesis-card-header trad-header">
+                  <span class="thesis-icon">🧮</span>
+                  <div>
+                    <div class="thesis-title">AIVSS-P Mathematical Formulation</div>
+                    <div class="thesis-subtitle">Internal Multi-Factor Priority Index Formula</div>
+                  </div>
+                  <span class="thesis-badge trad-badge">MATHEMATICAL MODEL</span>
+                </div>
+                <div class="thesis-card-body">
+                  <div class="thesis-point"><strong>📐 The AIVSS-P Formula:</strong> <code>AIVSS-P = 100 × ((S/10) × BI_n × REACH_n × L)^(1/4)</code>. Rounds to the nearest integer in [0, 100]. Zero severity or likelihood produces zero.</div>
+                  <div class="thesis-point"><strong>📊 Four Priced Factors:</strong> Technical Severity (<code>S ∈ [0, 10]</code> from CVSS-BTE), Business Impact (<code>BI_n ∈ {0.35, 0.65, 1.0}</code>), Reach (<code>REACH_n ∈ {0.35, 0.65, 1.0}</code>), and Residual Likelihood (<code>L ∈ [0, 1]</code>).</div>
+                  <div class="thesis-point"><strong>⚠️ Independence Prerequisite:</strong> Because S already incorporates Threat and Environmental factors, organizations must explicitly define residual likelihood and reach to avoid double-counting.</div>
+                </div>
+              </div>
+              <div class="thesis-card harn-card">
+                <div class="thesis-card-header harn-header">
+                  <span class="thesis-icon">🏢</span>
+                  <div>
+                    <div class="thesis-title">Governance Rules &amp; Operational Bands</div>
+                    <div class="thesis-subtitle">Sprint Planning Bands and Strict Conflict Precedence</div>
+                  </div>
+                  <span class="thesis-badge harn-badge">ORGANIZATIONAL PRIORITY</span>
+                </div>
+                <div class="thesis-card-body">
+                  <div class="thesis-point"><strong>🎯 Four Priority Bands:</strong> <code>Immediate</code> (≥ 78), <code>This Sprint</code> (64–77), <code>Scheduled</code> (53–63), and <code>Backlog</code> (&lt; 53). Calibrated for internal engineering sprints.</div>
+                  <div class="thesis-point"><strong>⚖️ Federal Precedence Invariant:</strong> When AIVSS-P indicates Immediate but CISA BOD baseline mandates 60D, the BOD outcome is the federal legal obligation; AIVSS-P informs internal resource allocation only.</div>
+                  <div class="thesis-point"><strong>🔒 Strict Non-Portability:</strong> AIVSS-P is an organization-internal metric. It MUST NOT be published outside the assessing organization or used for cross-organizational comparisons.</div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }
+      return '';
+    }
+
+    function renderTable(slide) {
+      let ths = (slide.table_headers || []).map(h => `<th>${esc(h)}</th>`).join('');
+      let rows = (slide.table_rows || []).map(r => `<tr>${r.map(c => `<td>${rich(c)}</td>`).join('')}</tr>`).join('');
+      return `
+        <div id="slide-content-wrap" class="idea-slide">
+          ${svgFor(slide.number)}
+          <div class="triple-lead">${esc(slide.raw_lines[1] || '')}</div>
+          <div style="overflow-x:auto; flex:1; min-height:0; margin-top:0.25rem;">
+            <table class="slide-table">
+              <thead><tr>${ths}</tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function renderCode(slide) {
+      const linesHtml = (slide.code_lines || []).map((line, idx) => {
+        const isHl = (slide.highlight_lines || []).includes(idx + 1);
+        return `<div class="code-line ${isHl ? 'code-line-hl' : ''}">
+          <span class="line-num">${idx + 1}</span>
+          <span class="line-code">${esc(line)}</span>
+        </div>`;
+      }).join('');
+
+      const conceptsHtml = (slide.concepts || []).map(c => `
+        <div class="code-concept-card">
+          <div class="concept-card-head">
+            <span class="concept-tag">${esc(c.tag)}</span>
+            <span class="concept-name">${esc(c.title)}</span>
+          </div>
+          <div class="concept-card-text">${rich(c.desc)}</div>
+        </div>
+      `).join('');
+
+      const invariantHtml = slide.invariant ? `
+        <div class="invariant-card">
+          <div class="invariant-title">🛡️ Execution &amp; Control Invariant</div>
+          <div>${rich(slide.invariant)}</div>
+        </div>
+      ` : '';
+
+      return `
+        <div id="slide-content-wrap" class="code-slide-container">
+          <div class="code-editor-window">
+            <div class="code-editor-header">
+              <div class="code-dots">
+                <span class="code-dot dot-red"></span>
+                <span class="code-dot dot-yellow"></span>
+                <span class="code-dot dot-green"></span>
+              </div>
+              <span class="code-file-tag">${esc(slide.file_tag || 'assessment.json')}</span>
+              <span class="code-lang-tag">${esc(slide.lang_tag || 'JSON')}</span>
+            </div>
+            <div class="code-block">${linesHtml}</div>
+          </div>
+          <div class="code-concepts-column">
+            <div class="code-concepts-list">${conceptsHtml}</div>
+            ${invariantHtml}
+          </div>
+        </div>`;
+    }
+
+    function renderThanks(slide) {
+      return `
+        <div id="slide-content-wrap" class="thanks-wrap idea-slide">
+          <div class="thanks-header">
+            <div class="thanks-kicker">OWASP AIVSS 1.0 · Authoritative Ecosystem Resources</div>
+            <div class="thanks-lede">Securing Autonomous and Agentic AI Systems Across Standards and Production Harms</div>
+          </div>
+          <div class="thanks-books">
+            <a class="thanks-book-card" href="https://github.com/kenhuangus/aivss-v1-candidate" target="_blank" rel="noopener noreferrer" title="AIVSS 1.0 GitHub Repository">
+              <div class="thanks-book-cover">
+                <img src="assets/images/graph_engineering_book.jpg" alt="AIVSS 1.0 Specification & Calculator" />
+              </div>
+              <div class="thanks-book-tag">GitHub · Open Source</div>
+              <div class="thanks-book-title">AIVSS 1.0 Specification &amp; Calculator</div>
+              <div class="thanks-book-asin"><span>github.com/kenhuangus/aivss-v1-candidate ↗</span></div>
+            </a>
+            <a class="thanks-book-card" href="https://aivss.owasp.org/" target="_blank" rel="noopener noreferrer" title="OWASP AIVSS Project">
+              <div class="thanks-book-cover">
+                <img src="assets/images/harness_engineering_book.jpg" alt="OWASP AIVSS Project Portal" />
+              </div>
+              <div class="thanks-book-tag">OWASP Official Project</div>
+              <div class="thanks-book-title">OWASP Agentic AI Vulnerability Scoring</div>
+              <div class="thanks-book-asin"><span>aivss.owasp.org ↗</span></div>
+            </a>
+          </div>
+          <div class="thanks-footer thanks-link">
+            <a href="https://aivss.owasp.org/" target="_blank" rel="noopener noreferrer">aivss.owasp.org ↗</a>
+            &nbsp;·&nbsp;
+            <a href="https://github.com/kenhuangus/aivss-v1-candidate" target="_blank" rel="noopener noreferrer">github.com/kenhuangus/aivss-v1-candidate ↗</a>
+            &nbsp;·&nbsp;
+            <a href="https://distributedapps.ai/" target="_blank" rel="noopener noreferrer">distributedapps.ai ↗</a>
+            &nbsp;·&nbsp;
+            <a href="https://kenhuangus.substack.com/" target="_blank" rel="noopener noreferrer">kenhuangus.substack.com ↗</a>
+          </div>
+        </div>`;
+    }
+
+    function renderSlide(idx) {
+      if (idx < 0) idx = 0;
+      if (idx >= slidesData.length) idx = slidesData.length - 1;
+      currentIdx = idx;
+      const slide = slidesData[idx];
+      const t = slide.slide_type;
+      selectEl.value = idx;
+      document.getElementById('slide-title').innerText = slide.raw_lines[0] || ('Slide ' + slide.number);
+      document.getElementById('slide-title').classList.toggle('is-long', t === 'comparison' || t === 'table');
+      document.getElementById('slide-num-badge').innerText = 'Slide ' + slide.number + ' of ' + slidesData.length;
+      if (window.location.hash !== '#' + slide.number) {
+        history.replaceState(null, '', '#' + slide.number);
+      }
+      document.getElementById('btn-prev').disabled = (idx === 0);
+      document.getElementById('btn-next').disabled = (idx === slidesData.length - 1);
+
+      let html = '';
+      if (t === 'title') html = renderTitle();
+      else if (t === 'speaker') html = renderSpeaker(slide);
+      else if (t === 'agenda') html = renderAgenda(slide);
+      else if (t === 'section') html = renderSection(slide);
+      else if (t === 'triple') html = renderTriple(slide);
+      else if (t === 'comparison') html = renderComparison(slide);
+      else if (t === 'table') html = renderTable(slide);
+      else if (t === 'code') html = renderCode(slide);
+      else if (t === 'thanks') html = renderThanks(slide);
+      else {
+        html = '<div id="slide-content-wrap" class="slide-content-wrapper">' + formatBullets((slide.raw_lines || []).slice(1)) + '</div>';
+      }
+      bodyEl.innerHTML = html;
+
+      bodyEl.style.setProperty('--fit-scale', '1.0');
+      const wrapper = document.getElementById('slide-content-wrap') || bodyEl;
+      const clientH = bodyEl.clientHeight;
+      let scale = 1.0;
+      let shrink = 0;
+      while ((bodyEl.scrollHeight > clientH || wrapper.offsetHeight > (clientH - 6)) && scale > 0.55 && shrink < 70) {
+        scale -= 0.02;
+        bodyEl.style.setProperty('--fit-scale', scale.toFixed(2));
+        shrink++;
+      }
+      document.getElementById('progress-fill').style.width = (((idx + 1) / slidesData.length) * 100) + '%';
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('grid-mode');
+      grid.innerHTML = '';
+      slidesData.forEach((slide, idx) => {
+        const card = document.createElement('div');
+        card.className = 'grid-slide-card';
+        card.onclick = () => { isGridMode = true; toggleMode(); renderSlide(idx); };
+        const title = slide.raw_lines[0] || ('Slide ' + slide.number);
+        const body = (slide.raw_lines.slice(1, 3).join(' ') || '');
+        card.innerHTML = '<div style="font-size:0.75rem;font-weight:800;margin-bottom:0.35rem;color:var(--accent-dk);">SLIDE ' + slide.number + '</div>'
+          + '<div class="grid-slide-title">' + esc(title) + '</div>'
+          + '<div class="grid-slide-body">' + esc(body) + '</div>';
+        grid.appendChild(card);
+      });
+    }
+    function prevSlide() { renderSlide(currentIdx - 1); }
+    function nextSlide() { renderSlide(currentIdx + 1); }
+    function goToSlide(val) { renderSlide(parseInt(val, 10)); }
+    function jumpToEnteredSlide() {
+      const input = document.getElementById('goto-input');
+      const val = parseInt(input.value, 10);
+      if (!isNaN(val) && val >= 1 && val <= slidesData.length) {
+        renderSlide(val - 1);
+        input.value = '';
+      } else {
+        alert('Please enter a slide number between 1 and ' + slidesData.length + '.');
+      }
+    }
+    function toggleMode() {
+      isGridMode = !isGridMode;
+      document.getElementById('presentation-mode').style.display = isGridMode ? 'none' : 'flex';
+      document.getElementById('grid-mode').style.display = isGridMode ? 'grid' : 'none';
+      document.getElementById('mode-text').innerText = isGridMode ? 'Presentation Mode' : 'Grid View';
+      document.getElementById('mode-icon').innerText = isGridMode ? '📺' : '📜';
+      if (isGridMode) renderGrid();
+    }
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else if (document.exitFullscreen) document.exitFullscreen();
+    }
+    document.addEventListener('keydown', (e) => {
+      if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') nextSlide();
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevSlide();
+      if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+      if (e.key === 'm' || e.key === 'M') toggleMode();
+      if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault();
+        const el = document.getElementById('goto-input');
+        if (el) { el.focus(); el.select(); }
+      }
+    });
+    window.addEventListener('resize', () => { if (!isGridMode) renderSlide(currentIdx); });
+    function getInitialSlideIndex() {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) {
+        const num = parseInt(hash, 10);
+        if (!isNaN(num)) {
+          const found = slidesData.findIndex(s => s.number === num);
+          if (found !== -1) return found;
+        }
+      }
+      return 0;
+    }
+    window.addEventListener('hashchange', () => {
+      const idx = getInitialSlideIndex();
+      if (idx !== currentIdx) renderSlide(idx);
+    });
+    renderSlide(getInitialSlideIndex());
+"""
+
+# ---------------------------------------------------------------------------
+# CSS EXTRA TOKENS
+# ---------------------------------------------------------------------------
+CSS_CONTENT = r"""
+  <style>
+    :root {
+      --bg: #F0EEE6;
+      --surface: #FAF9F5;
+      --surface-alt: #F5E6DF;
+      --ink: #141413;
+      --ink-muted: #6B6B63;
+      --rule: #E3E0D6;
+      --accent: #D97757;
+      --accent-dk: #BD5D3A;
+      --accent-sf: #F5E6DF;
+      --code-bg: #1A1A18;
+      --code-rule: #333330;
+      --font-display: ui-serif, Georgia, "Times New Roman", serif;
+      --font-body: -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+      --font-code: ui-monospace, "JetBrains Mono", Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--ink);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      height: 46px;
+      flex: 0 0 46px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--rule);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 1.0rem;
+      z-index: 50;
+      gap: 0.75rem;
+      overflow-x: auto;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.7rem; flex: 0 0 auto; }
+    .brand-logo {
+      width: 30px; height: 30px;
+      background: var(--accent-sf); color: var(--accent-dk); border: 1px solid var(--accent);
+      border-radius: 8px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-family: var(--font-code);
+    }
+    .brand-title { font-weight: 700; font-size: 0.90rem; white-space: nowrap; color: var(--ink); }
+
+    .controls { display: flex; align-items: center; gap: 0.40rem; flex: 0 0 auto; }
+    .btn {
+      background: var(--surface); border: 1px solid var(--rule); color: var(--ink);
+      padding: 0.35rem 0.65rem; border-radius: 8px; font-weight: 600; font-size: 0.80rem;
+      cursor: pointer; transition: background-color 0.16s, border-color 0.16s; text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--accent-sf); border-color: var(--accent); color: var(--ink); }
+    .btn:focus-visible, .slide-select:focus-visible, .goto-input:focus-visible { outline: 2px solid var(--accent-dk); outline-offset: 2px; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #FAF9F5; font-weight: 700; }
+    .btn-primary:hover { background: var(--accent-dk); border-color: var(--accent-dk); color: #FAF9F5; }
+    
+    .goto-group {
+      display: flex;
+      align-items: center;
+      gap: 0.22rem;
+      background: var(--bg);
+      padding: 0.12rem 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--rule);
+    }
+    .goto-input {
+      width: 48px;
+      background: var(--surface);
+      color: var(--ink);
+      border: 1px solid var(--rule);
+      padding: 0.25rem 0.35rem;
+      border-radius: 6px;
+      font-family: var(--font-code);
+      font-size: 0.80rem;
+      font-weight: 750;
+      text-align: center;
+      -moz-appearance: textfield;
+    }
+    .goto-input::-webkit-outer-spin-button,
+    .goto-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .btn-goto {
+      padding: 0.26rem 0.50rem;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+
+    select.slide-select {
+      background: var(--surface); color: var(--ink); border: 1px solid var(--rule);
+      padding: 0.35rem 0.55rem; border-radius: 8px; font-family: var(--font-body);
+      font-size: 0.80rem; font-weight: 600;
+      max-width: 320px;
+    }
+
+    main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide-viewport {
+      width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center;
+      padding: clamp(0.30rem, 0.8vw, 0.70rem);
+    }
+    .slide-card {
+      width: 100%; max-width: 1540px; height: 100%;
+      background: var(--surface); border: 1px solid var(--rule);
+      border-radius: 12px; padding: clamp(0.80rem, 1.5vw, 1.40rem); display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
+    }
+    .slide-header {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.8rem; margin-bottom: 0.35rem; border-bottom: 1px solid var(--rule); padding-bottom: 0.35rem;
+      flex: 0 0 auto;
+    }
+    .slide-title-wrap { min-width: 0; }
+    .slide-title {
+      font-family: var(--font-display); font-size: clamp(1.75rem, 2.75vw, 2.45rem);
+      font-weight: 700; line-height: 1.15; letter-spacing: -0.015em; color: var(--ink);
+    }
+    .slide-title.is-long { font-size: clamp(1.45rem, 2.3vw, 1.95rem) !important; letter-spacing: -0.02em; }
+    .slide-num-badge {
+      background: var(--accent-sf); color: var(--accent-dk); border: 1px solid var(--accent);
+      padding: 0.22rem 0.60rem; border-radius: 9999px; font-size: 0.82rem; font-weight: 750; white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .slide-body {
+      --fit-scale: 1;
+      --slide-body-base-size: 1.625rem;
+      flex: 1; min-height: 0; overflow-y: auto; padding-right: 0.20rem;
+      font-size: calc(var(--slide-body-base-size) * var(--fit-scale));
+      line-height: 1.50; color: var(--ink);
+    }
+
+    code {
+      font-family: var(--font-code);
+      background: var(--accent-sf);
+      color: var(--accent-dk);
+      padding: 0.08rem 0.32rem;
+      border-radius: 4px;
+      font-size: 0.90em;
+      white-space: nowrap;
+      border: 1px solid var(--rule);
+    }
+    pre code, .code-editor-body code, .line-code {
+      white-space: pre !important;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      color: inherit !important;
+    }
+    .slide-content-wrapper {
+      width: 100%;
+      display: block;
+    }
+    .slide-svg {
+      display: block; width: 100% !important; height: auto; max-width: 100%;
+      margin: 0.35rem 0 0.65rem 0;
+    }
+
+    /* Comparison Table Styling */
+    .slide-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.25rem 0 0.50rem 0;
+      font-size: 0.86rem;
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .slide-table th {
+      background: var(--accent-sf);
+      color: var(--ink);
+      font-weight: 750;
+      text-align: left;
+      padding: 0.40rem 0.60rem;
+      border-bottom: 1.5px solid var(--rule);
+      font-family: var(--font-display);
+      font-size: 0.92rem;
+    }
+    .slide-table td {
+      padding: 0.35rem 0.60rem;
+      border-bottom: 1px solid var(--rule);
+      color: var(--ink);
+      line-height: 1.34;
+      vertical-align: middle;
+    }
+    .slide-table tr:last-child td {
+      border-bottom: none;
+    }
+    .slide-table tr:nth-child(even) td {
+      background: rgba(245, 230, 223, 0.25);
+    }
+
+    /* Code Slide Layout */
+    .code-slide-container {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.15fr);
+      gap: 1.05rem;
+      height: 100%;
+      align-items: start;
+    }
+    @media (max-width: 1020px) {
+      .code-slide-container {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+
+    .code-editor-window {
+      background: var(--code-bg);
+      border: 1px solid var(--code-rule);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+      max-height: calc(100vh - 135px);
+    }
+    .code-editor-header {
+      background: #242320;
+      border-bottom: 1px solid var(--code-rule);
+      padding: 0.40rem 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .code-dots {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+    .code-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+    }
+    .dot-red { background: #E06C75; }
+    .dot-yellow { background: #E5C07B; }
+    .dot-green { background: #98C379; }
+    .code-file-tag {
+      font-family: var(--font-code);
+      font-size: 0.78rem;
+      color: #A0A09A;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .code-lang-tag {
+      background: #333330;
+      color: #D97757;
+      font-family: var(--font-code);
+      font-size: 0.70rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .code-block {
+      background: var(--code-bg);
+      color: #FAF9F5;
+      font-family: var(--font-code);
+      font-size: 0.88rem;
+      line-height: 1.44;
+      padding: 0.45rem 0;
+      margin: 0;
+      overflow-x: auto;
+      overflow-y: auto;
+    }
+
+    .code-line {
+      display: flex;
+      align-items: baseline;
+      padding: 0.06rem 0.55rem;
+      transition: background-color 0.15s;
+    }
+    .code-line:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .code-line-hl {
+      background: rgba(217, 119, 87, 0.22);
+      border-left: 3.5px solid var(--accent);
+      padding-left: calc(0.55rem - 3.5px);
+    }
+    .line-num {
+      color: #5C5C56;
+      width: 24px;
+      flex: 0 0 24px;
+      text-align: right;
+      margin-right: 8px;
+      font-size: 0.76rem;
+      user-select: none;
+    }
+    .code-line-hl .line-num {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .line-code {
+      flex: 1;
+      white-space: pre;
+    }
+
+    /* Code Concepts Column */
+    .code-concepts-column {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      overflow-y: auto;
+      max-height: calc(100vh - 135px);
+      padding-right: 0.20rem;
+    }
+    .code-concepts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.50rem;
+    }
+    .code-concept-card {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-left: 3.5px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.60rem 0.85rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    }
+    .concept-card-head {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 0.22rem;
+      flex-wrap: wrap;
+    }
+    .concept-tag {
+      background: var(--accent);
+      color: #FAF9F5;
+      font-size: 0.68rem;
+      font-weight: 750;
+      padding: 0.10rem 0.40rem;
+      border-radius: 4px;
+      font-family: var(--font-code);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .concept-name {
+      font-family: var(--font-display);
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .concept-card-text {
+      font-size: 0.88rem;
+      color: var(--ink);
+      line-height: 1.40;
+    }
+
+    .invariant-card {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-left: 3.5px solid var(--accent-dk);
+      border-radius: 8px;
+      padding: 0.60rem 0.85rem;
+      font-size: 0.86rem;
+      color: var(--ink-muted);
+      line-height: 1.38;
+    }
+    .invariant-title {
+      font-family: var(--font-display);
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.20rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    /* Hierarchy Bullets */
+    .main-bullets { list-style-type: none; padding-left: 0; margin-top: 0.30rem; }
+    .bullet-group { break-inside: avoid; }
+    .primary-bullet {
+      font-family: var(--font-display); font-size: 1.02em; font-weight: 650; color: var(--ink);
+      margin-top: 0.32em; margin-bottom: 0.16em; position: relative; padding-left: 1.25em; line-height: 1.44;
+    }
+    .primary-bullet::before {
+      content: "◆"; color: var(--accent); font-size: 0.72em; line-height: 1; position: absolute; left: 0; top: 0.18em;
+    }
+
+    /* Instructor Slide Grid */
+    .instructor-slide-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(0, 1.25fr);
+      gap: 1.25rem;
+      height: 100%;
+      align-items: start;
+    }
+    @media (max-width: 1040px) {
+      .instructor-slide-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+    .instructor-info-col {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      min-width: 0;
+    }
+    .author-books-card {
+      background: var(--surface);
+      border: 1.5px solid var(--rule);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+    }
+    .author-books-header {
+      background: var(--accent-sf);
+      color: var(--ink);
+      font-family: var(--font-display);
+      font-weight: 750;
+      font-size: 0.88rem;
+      padding: 0.45rem 0.80rem;
+      border-bottom: 1.5px solid var(--rule);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.50rem;
+      white-space: nowrap;
+    }
+    .author-books-header a {
+      font-family: var(--font-body);
+      font-size: 0.76rem;
+      font-weight: 750;
+      color: var(--accent-dk);
+      text-decoration: underline;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .books-gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.40rem;
+      padding: 0.50rem;
+      background: #FAF8F2;
+    }
+    .book-item-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      padding: 0.25rem 0.20rem;
+      text-decoration: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      transition: transform 0.16s, border-color 0.16s, box-shadow 0.16s;
+    }
+    .book-item-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(217, 119, 87, 0.18);
+    }
+    .book-cover-img {
+      width: 100%;
+      height: clamp(75px, 11vh, 105px);
+      object-fit: contain;
+      border-radius: 4px;
+      border: 0.5px solid var(--rule);
+    }
+    .book-item-title {
+      font-size: 0.58rem;
+      font-weight: 700;
+      color: var(--ink);
+      text-align: center;
+      line-height: 1.15;
+      margin-top: 0.20rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      display: block;
+    }
+    .book-publisher-tag {
+      font-size: 0.48rem;
+      font-weight: 800;
+      color: var(--accent-dk);
+      background: var(--accent-sf);
+      padding: 0.05rem 0.20rem;
+      border-radius: 3px;
+      margin-top: 0.12rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      line-height: 1.1;
+    }
+
+    /* Slide 1 Cover Layout */
+    .slide-1-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .slide-1-instructor-card {
+      background: var(--surface);
+      border: 1.5px solid var(--rule);
+      border-radius: 12px;
+      padding: 0.95rem 1.40rem;
+      display: flex;
+      align-items: center;
+      gap: 1.40rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    }
+    .slide-1-avatar-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .slide-1-avatar-img {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--accent);
+      box-shadow: 0 4px 12px rgba(217, 119, 87, 0.25);
+      background: var(--surface-alt);
+    }
+    .slide-1-instructor-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.30rem;
+      flex: 1;
+    }
+    .slide-1-instructor-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--accent-sf);
+      color: var(--accent-dk);
+      border: 1px solid var(--accent);
+      font-family: var(--font-code);
+      font-size: 0.75rem;
+      font-weight: 750;
+      padding: 0.16rem 0.50rem;
+      border-radius: 6px;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .slide-1-instructor-name {
+      font-family: var(--font-display);
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.15;
+    }
+    .slide-1-instructor-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 0.20rem;
+      margin-top: 0.10rem;
+    }
+    .slide-1-title-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.98rem;
+      font-weight: 650;
+      color: var(--ink);
+    }
+    .slide-1-title-item .title-icon {
+      font-size: 1.10rem;
+      flex-shrink: 0;
+    }
+    .slide-1-title-highlight {
+      color: var(--accent-dk);
+      font-weight: 750;
+    }
+    .slide-1-pillars-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.65rem;
+    }
+    @media (max-width: 900px) {
+      .slide-1-pillars-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .slide-1-instructor-card {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+      }
+      .slide-1-instructor-badge {
+        margin: 0 auto;
+      }
+      .slide-1-title-item {
+        justify-content: center;
+      }
+    }
+    .slide-1-pillar-pill {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 0.50rem 0.70rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    }
+    .slide-1-pillar-title {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 750;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .slide-1-pillar-desc {
+      font-size: 0.74rem;
+      color: var(--ink-muted);
+      line-height: 1.28;
+    }
+
+    /* Comparison Thesis Layout */
+    .thesis-slide-wrap {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .thesis-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+      flex: 1;
+      align-items: stretch;
+    }
+    @media (max-width: 1040px) {
+      .thesis-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+    .thesis-card {
+      background: var(--surface);
+      border: 1.5px solid var(--rule);
+      border-radius: 9px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .thesis-card.trad-card {
+      border-top: 3.5px solid #2563eb;
+    }
+    .thesis-card.harn-card {
+      border-top: 3.5px solid #059669;
+    }
+    .thesis-card-header {
+      padding: 0.40rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      border-bottom: 1.5px solid var(--rule);
+    }
+    .thesis-card-header.trad-header {
+      background: #F0F5FE;
+    }
+    .thesis-card-header.harn-header {
+      background: #E8F8F2;
+    }
+    .thesis-icon {
+      font-size: 1.15rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .thesis-title {
+      font-family: var(--font-display);
+      font-size: 0.94rem;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.20;
+    }
+    .thesis-subtitle {
+      font-size: 0.72rem;
+      color: var(--ink-muted);
+      font-weight: 500;
+      margin-top: 0.05rem;
+    }
+    .thesis-badge {
+      margin-left: auto;
+      font-size: 0.62rem;
+      font-weight: 800;
+      padding: 0.10rem 0.38rem;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .thesis-badge.trad-badge {
+      background: #DBEAFE;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+    .thesis-badge.harn-badge {
+      background: #D1FAE5;
+      color: #065F46;
+      border: 1px solid #a7f3d0;
+    }
+    .thesis-card-body {
+      padding: 0.45rem 0.70rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      flex: 1;
+      font-size: 0.82rem;
+      line-height: 1.38;
+      color: var(--ink);
+      background: var(--surface);
+    }
+    .thesis-point {
+      background: #FAF8F2;
+      border: 1px solid var(--rule);
+      border-radius: 5px;
+      padding: 0.32rem 0.55rem;
+      line-height: 1.34;
+      font-size: 0.79rem;
+    }
+    .trad-card .thesis-point {
+      border-left: 3px solid #3b82f6;
+    }
+    .harn-card .thesis-point {
+      border-left: 3px solid #10b981;
+    }
+
+    /* Triple Grid Layout */
+    .triple-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.70rem;
+      min-height: 0;
+      flex: 1;
+    }
+    .triple-card {
+      background: var(--surface);
+      border: 1.5px solid var(--rule);
+      border-radius: 12px;
+      padding: 0.85rem 1.00rem 1.00rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+      min-height: 0;
+    }
+    .triple-num {
+      font-family: var(--font-code);
+      font-size: 1.35em;
+      font-weight: 800;
+      color: var(--accent-dk);
+    }
+    .triple-title {
+      font-family: var(--font-display);
+      font-size: 1.25em;
+      font-weight: 750;
+      color: var(--ink);
+      line-height: 1.15;
+    }
+    .triple-body {
+      font-size: 1.08em;
+      line-height: 1.32;
+      color: var(--ink);
+    }
+    .triple-lead {
+      font-size: 1.10em;
+      color: var(--ink-muted);
+      font-weight: 550;
+      margin-bottom: 0.30rem;
+    }
+
+    /* Agenda Stack */
+    .agenda-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.40rem;
+      flex: 1;
+      min-height: 0;
+    }
+    .agenda-row {
+      display: grid;
+      grid-template-columns: 5.0rem 1fr;
+      align-items: stretch;
+      background: var(--surface);
+      border: 1.5px solid var(--rule);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .agenda-num {
+      background: var(--accent-sf);
+      color: var(--accent-dk);
+      font-family: var(--font-code);
+      font-weight: 800;
+      font-size: 1.35em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1.5px solid var(--rule);
+    }
+    .agenda-copy { padding: 0.40rem 0.80rem 0.45rem 0.80rem; }
+    .agenda-title {
+      font-family: var(--font-display);
+      font-weight: 750;
+      font-size: 1.18em;
+      color: var(--ink);
+    }
+    .agenda-body {
+      font-size: 1.05em;
+      line-height: 1.28;
+      color: var(--ink);
+    }
+
+    /* Thanks Wrap */
+    .thanks-wrap {
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      justify-content: space-between;
+      min-height: 0;
+      box-sizing: border-box;
+    }
+    .thanks-header {
+      text-align: center;
+      flex: 0 0 auto;
+    }
+    .thanks-kicker {
+      font-family: var(--font-code);
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-dk);
+      font-size: 0.78em;
+    }
+    .thanks-lede {
+      font-size: 0.88em;
+      line-height: 1.25;
+      color: var(--ink-muted);
+      max-width: 40rem;
+      margin: 0.2rem auto 0;
+    }
+    .thanks-books {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      flex: 1 1 auto;
+      min-height: 0;
+      align-items: stretch;
+      overflow: hidden;
+    }
+    .thanks-book-card {
+      background: var(--surface);
+      border: 1.5px solid var(--rule);
+      border-radius: 12px;
+      padding: 0.55rem 0.65rem 0.65rem;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.30rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .thanks-book-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 8px 22px rgba(217, 119, 87, 0.08);
+    }
+    .thanks-book-cover {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .thanks-book-cover img {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 5px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.10);
+    }
+    .thanks-book-tag {
+      font-family: var(--font-code);
+      font-size: 0.62em;
+      font-weight: 750;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--accent-dk);
+      background: var(--accent-sf);
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      padding: 0.12rem 0.45rem;
+      flex: 0 0 auto;
+    }
+    .thanks-book-title {
+      font-family: var(--font-display);
+      font-size: 0.88em;
+      font-weight: 750;
+      line-height: 1.15;
+      color: var(--ink);
+      max-width: 18rem;
+      flex: 0 0 auto;
+    }
+    .thanks-book-asin {
+      font-family: var(--font-code);
+      font-size: 0.62em;
+      font-weight: 650;
+      color: var(--ink-muted);
+      line-height: 1.2;
+      flex: 0 0 auto;
+    }
+    .thanks-book-asin span {
+      color: var(--accent-dk);
+      font-weight: 750;
+    }
+    .thanks-footer {
+      text-align: center;
+      flex: 0 0 auto;
+    }
+    .thanks-link a {
+      color: var(--accent-dk);
+      font-weight: 700;
+      font-family: var(--font-code);
+      font-size: 0.82em;
+      text-decoration: underline;
+    }
+
+    /* Grid Mode */
+    .grid-viewport {
+      width: 100%; height: 100%; overflow-y: auto; padding: clamp(1rem, 2.5vw, 1.8rem);
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1rem;
+    }
+    .grid-slide-card {
+      background: var(--surface); border: 1px solid var(--rule);
+      border-radius: 10px; padding: 1.15rem; height: 260px; display: flex; flex-direction: column;
+      cursor: pointer; transition: border-color 0.16s, background-color 0.16s;
+    }
+    .grid-slide-card:hover { background: var(--accent-sf); border-color: var(--accent); }
+    .grid-slide-title {
+      font-family: var(--font-display); font-size: 1.1rem; line-height: 1.15;
+      font-weight: 650; margin-bottom: 0.45rem; color: var(--ink);
+    }
+    .grid-slide-body { flex: 1; overflow: hidden; font-size: 0.8rem; line-height: 1.45; color: var(--ink-muted); }
+
+    .progress-bar { height: 3px; background: var(--rule); width: 100%; }
+    .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+
+    @media (max-width: 980px) {
+      header { padding: 0 0.6rem; }
+      .brand-title { display: none; }
+      select.slide-select { max-width: 200px; }
+      .triple-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+"""
+
+# ---------------------------------------------------------------------------
+# MAIN BUILD PIPELINE
+# ---------------------------------------------------------------------------
+def main():
+    html_template = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIVSS 1.0 — Agentic AI Vulnerability Scoring System</title>
+  <meta name="description" content="AIVSS 1.0 Masterclass slide deck on technical severity, agentic profiling, and risk-based remediation for autonomous AI systems. Project Lead: Ken Huang, CISSP.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon.png?v=3">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png?v=3">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  __CSS__
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="brand-logo">AI</div>
+      <div class="brand-title">AIVSS 1.0 · OWASP Agentic AI</div>
+    </div>
+    <div class="controls">
+      <a href="https://aivss.owasp.org/" target="_blank" rel="noopener noreferrer" class="btn">🌐 OWASP Site</a>
+      <a href="https://github.com/kenhuangus/aivss-v1-candidate" target="_blank" rel="noopener noreferrer" class="btn">⭐ GitHub</a>
+      <button id="btn-grid" class="btn" onclick="toggleMode()"><span id="mode-icon">📜</span> <span id="mode-text">Grid View</span></button>
+      <button id="btn-prev" class="btn" onclick="prevSlide()">❮ Prev</button>
+      <select id="slide-select" class="slide-select" onchange="goToSlide(this.value)"></select>
+      <div class="goto-group">
+        <input type="number" id="goto-input" min="1" max="23" placeholder="#" class="goto-input" title="Enter slide number (1-23)" onkeydown="if(event.key==='Enter') jumpToEnteredSlide()">
+        <button id="btn-goto" class="btn btn-goto" onclick="jumpToEnteredSlide()" title="Jump to entered slide number">Go ➔</button>
+      </div>
+      <button id="btn-next" class="btn" onclick="nextSlide()">Next ❯</button>
+      <button id="btn-fullscreen" class="btn btn-primary" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    </div>
+  </header>
+  <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+  <main>
+    <div id="presentation-mode" class="slide-viewport">
+      <div class="slide-card">
+        <div class="slide-header">
+          <div class="slide-title-wrap">
+            <div id="slide-title" class="slide-title">Slide Title</div>
+          </div>
+          <div id="slide-num-badge" class="slide-num-badge">Slide 1 of 23</div>
+        </div>
+        <div id="slide-body" class="slide-body"></div>
+      </div>
+    </div>
+    <div id="grid-mode" class="grid-viewport" style="display:none;"></div>
+  </main>
+  <script>
+__JS__
+  </script>
+</body>
+</html>
+"""
+
+    js = JS_CODE.replace("SLIDES_JSON", json.dumps(SLIDES_DATA, ensure_ascii=False))
+    js = js.replace("SVG_JSON", json.dumps(SVG_MAP, ensure_ascii=False))
+    html_content = html_template.replace("__CSS__", CSS_CONTENT).replace("__JS__", js)
+
+    # Save slides.html into ROOT, docs/slides.html, and web/slides.html
+    targets = [
+        os.path.join(ROOT, "slides.html"),
+        os.path.join(DOCS_DIR, "slides.html"),
+        os.path.join(WEB_DIR, "slides.html"),
+    ]
+
+    for target in targets:
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        print(f"Generated: {target} ({len(html_content)} bytes)")
+
+    # Also save slides_data.json for programmatic access
+    data_target = os.path.join(ROOT, "slides_data.json")
+    with open(data_target, "w", encoding="utf-8") as f:
+        json.dump(SLIDES_DATA, f, indent=2, ensure_ascii=False)
+    print(f"Generated: {data_target} ({len(SLIDES_DATA)} slides)")
+
+if __name__ == "__main__":
+    main()
