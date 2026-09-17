@@ -1,0 +1,76 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install calculator
+        run: pip install -e ".[dev]"
+
+      - name: Run test suite
+        run: pytest
+
+      - name: Verify reference scenarios and BOD table
+        run: aivss-calc verify
+
+      - name: Check shipped examples are current
+        run: |
+          python examples/generate_asi_examples.py
+          git diff --exit-code examples
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install calculator and Playwright
+        run: |
+          pip install -e ".[dev,browser]"
+          playwright install --with-deps chromium
+
+      - name: Run in-browser calculator tests
+        env:
+          AIVSS_BROWSER_TESTS: "1"
+        run: pytest tests/test_web_calculator_browser.py
+
+  static-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install calculator
+        run: pip install -e .
+
+      - name: Build static demo site
+        run: python scripts/build_static_site.py _site /aivss-v1-candidate/
