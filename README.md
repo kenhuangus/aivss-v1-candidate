@@ -19,15 +19,18 @@ this candidate.
 - Assurance metrics: **EX, PT, CA, TD** (Traceability Deficit)
 - Unknown evidence value: **X**
 - Effect classes: **A0, A1, A2, AX**
+- **Level 1:** requires `cvss_vector` + complete `aivss_vector` (eight metrics)
+- **Exploit Maturity (`E`):** resolved from the evidence ladder before CVSS-BTE scoring
+- **Taxonomy:** ASI01–ASI10, or `MAESTRO-EXTENDED` with layer/threat metadata
 
 Layer 3 remediation uses CERT/CC SSVC decision table **`cisa:DT_BOD2604:1.0.0`**
 (BOD 26-04), with Agentic AI Effect Class **A2** as a fifth transparent extension
 input. See [docs/SSVC.md](docs/SSVC.md).
 
-When the Agentic AI Profile is present, the assessment supplies all eight
-metrics plus a rationale for each. The profile may be omitted; a missing
-profile is not A0. `AX` is used when classifying evidence is insufficient
-or the profile is absent.
+Level 1 assessments always supply all eight Agentic AI Profile metrics plus a
+rationale for each. `AX` is used when classifying evidence is insufficient
+(`X` on LC/CP/AP/SR). Findings outside ASI01–ASI10 are recorded as
+`MAESTRO-EXTENDED` with required taxonomy metadata (Section 5.7).
 
 CVSS and AIVSS vectors are separate, following the
 [CVSS v4.0 Extensions Framework](https://www.first.org/cvss/v4.0/user-guide):
@@ -37,25 +40,26 @@ CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:P
 AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H
 ```
 
-## Reference calculator limitations
+## Reference calculator conformance
 
 Repository: https://github.com/kenhuangus/aivss-v1-candidate
 
-The reference calculator is a candidate implementation (AIVSS Project, 2026).
-At reviewed commit `e6e29ebc5359e5b7691553da362319ffa50c4394`, all 127 tests
-pass, but that test suite does not establish conformance to every rule in the
-AIVSS 1.0 specification. The `assess` command scores the supplied CVSS vector
-without resolving Exploit Maturity (`E`); integrations must resolve `E` first.
-The implementation accepts absent profiles for comparison output and restricts
-taxonomy IDs to ASI01–ASI10, so it does not implement every Level 1 or
-extended-taxonomy requirement. Its `legacy` subcommand is for migration
-comparison only and must not be used for compliance.
+The reference calculator (`aivss-calc` 1.0.1) implements AIVSS 1.0 Level 1/2
+assessment mechanics:
+
+1. Resolves Exploit Maturity (`E`) from the evidence ladder before severity
+2. Requires a complete Agentic AI Profile for every assessment
+3. Accepts ASI01–ASI10 and MAESTRO-extended taxonomy metadata
+4. Emits SSVC/BOD decision tracks at Level 2
+
+The `legacy` subcommand reproduces withdrawn v0.x uplift scores for migration
+comparison only and must not be used for AIVSS 1.0 compliance.
 
 ## Install and verify
 
 ```bash
 pip install -e ".[dev]"
-pytest   # 127 tests
+pytest   # full suite
 aivss-calc verify
 ```
 

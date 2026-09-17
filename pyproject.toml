@@ -1,6 +1,6 @@
 [project]
 name = "aivss-calc"
-version = "1.0.0"
+version = "1.0.1"
 description = "AIVSS 1.0 calculator with a separate Agentic AI profile"
 readme = "README.md"
 requires-python = ">=3.10"

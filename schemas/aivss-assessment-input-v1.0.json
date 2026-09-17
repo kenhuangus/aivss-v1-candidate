@@ -9,6 +9,8 @@
     "path_id",
     "risk_category",
     "cvss_vector",
+    "aivss_vector",
+    "metric_evidence",
     "agentic_applicability",
     "provenance"
   ],
@@ -17,7 +19,31 @@
     "path_id": {"type": "string", "minLength": 1},
     "title": {"type": "string", "minLength": 1},
     "summary": {"type": "string", "minLength": 1},
-    "risk_category": {"type": "string", "pattern": "^ASI(0[1-9]|10)$"},
+    "risk_category": {
+      "type": "string",
+      "pattern": "^(ASI(0[1-9]|10)|MAESTRO-EXTENDED)$"
+    },
+    "taxonomy_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maestro_layer", "threat_description"],
+      "properties": {
+        "maestro_layer": {
+          "enum": [
+            "Foundation Models",
+            "Data Operations",
+            "Agent Frameworks",
+            "Deployment Infrastructure",
+            "Evaluation and Observability",
+            "Security and Compliance",
+            "Agent Ecosystem"
+          ]
+        },
+        "threat_description": {"type": "string", "minLength": 1},
+        "nearest_asi": {"type": "string", "pattern": "^ASI(0[1-9]|10)$"}
+      }
+    },
+    "exploit_maturity_unresolved": {"type": "boolean"},
     "cvss_vector": {
       "type": "string",
       "pattern": "^CVSS:4\\.0(?:/(?!LC:|CP:|AP:|SR:|EX:|PT:|CA:|TD:)[A-Z][A-Z0-9]*:[A-Za-z]+)+$"
@@ -131,12 +157,14 @@
   },
   "allOf": [
     {
-      "if": {"required": ["aivss_vector"]},
-      "then": {"required": ["metric_evidence"]}
-    },
-    {
-      "if": {"required": ["metric_evidence"]},
-      "then": {"required": ["aivss_vector"]}
+      "if": {
+        "required": ["risk_category"],
+        "properties": {"risk_category": {"const": "MAESTRO-EXTENDED"}}
+      },
+      "then": {"required": ["taxonomy_metadata"]},
+      "else": {
+        "not": {"required": ["taxonomy_metadata"]}
+      }
     },
     {
       "if": {

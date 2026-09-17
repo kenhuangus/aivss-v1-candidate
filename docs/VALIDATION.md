@@ -5,36 +5,33 @@
 The repository currently supports these claims:
 
 1. CVSS v4.0 inputs remain separate and independently reproducible.
-2. When the Agentic AI Profile is present, every report records all eight
-   metrics, one coherent path, and evidence per metric. The profile may be
-   omitted; a missing profile is not A0 and does not assert an effect class.
+2. Every Level 1 assessment requires a complete Agentic AI Profile (eight
+   metrics with evidence) and one coherent path.
 3. Unknown classifying evidence is represented explicitly as effect class `AX`.
 4. Effect-class algorithms are deterministic, exact, and exhaustively tested
    over their finite input domains.
 5. Normative AIVSS severity equals CVSS-BTE; assurance metrics are
    descriptive metadata only.
-6. CISA BOD 26-04 compliance results are separated from non-CVE analogies and
+6. Exploit Maturity (`E`) is resolved from the factual evidence ladder before
+   CVSS-BTE interpolation; EPSS does not set `E`.
+7. Findings may use ASI01–ASI10 or MAESTRO-extended taxonomy metadata.
+8. CISA BOD 26-04 compliance results are separated from non-CVE analogies and
    from the AIVSS overlay.
-7. A forensic-triage requirement is never removed by the overlay.
+9. A forensic-triage requirement is never removed by the overlay.
 
 The repository does **not** yet support claims that the candidate
 effect-class boundaries, remediation overlay, or priority bands predict loss,
 exploitation, or optimal remediation decisions.
 
-## Reference calculator scope (candidate)
+## Reference calculator conformance
 
 https://github.com/kenhuangus/aivss-v1-candidate
 
-The reference calculator is a candidate implementation (AIVSS Project, 2026).
-At reviewed commit `e6e29ebc5359e5b7691553da362319ffa50c4394`, all 127 tests
-pass, but that test suite does not establish conformance to every rule in the
-AIVSS 1.0 specification. The `assess` command scores the supplied CVSS vector
-without resolving Exploit Maturity (`E`); integrations must resolve `E` first.
-The implementation accepts absent profiles for comparison output and restricts
-taxonomy IDs to ASI01–ASI10, so it does not implement every Level 1 or
-extended-taxonomy requirement. Its `legacy` subcommand is for migration
-comparison only and must not be used for compliance.
-
+The reference calculator (`aivss-calc` 1.0.1) implements Level 1/2 assessment
+mechanics in this repository: E resolution, required Agentic AI Profile,
+ASI and MAESTRO-extended taxonomy, and SSVC/BOD decision tracks. The `legacy`
+subcommand is for migration comparison only and must not be used for
+compliance.
 ## Candidate hypotheses
 
 The following outputs are retained to enable evaluation, not to assert

@@ -11,11 +11,9 @@ the worst value of each metric from different paths and combine them into a
 synthetic profile. Score materially different paths separately and retain a
 stable `path_id`.
 
-All eight metrics are required when the Agentic AI Profile is present.
-Omit the profile entirely when it is not assessed; a missing profile is not
-A0. Use `X` when evidence cannot resolve a metric that is present.
-Any `X` makes the profile incomplete and produces effect class `AX` when a
-classifying metric is unknown.
+All eight metrics are required for every Level 1 assessment. Use `X` when
+evidence cannot resolve a metric. Any `X` makes the profile incomplete and
+produces effect class `AX` when a classifying metric is unknown.
 
 ## Agentic Effect Class
 
@@ -35,14 +33,20 @@ and deterministic, but have not yet passed the gates in
 
 ## CVSS result
 
-`cvss_bte` is produced from the separate, valid CVSS v4.0 vector. AIVSS does
-not modify CVSS metric definitions, constants, ordering, or the official CVSS
-score. Consumers must always retain and display `cvss_bte`.
+`cvss_bte` is produced from the separate, valid CVSS v4.0 vector after Exploit
+Maturity (`E`) is resolved from the factual evidence ladder. AIVSS does not
+modify CVSS metric definitions, constants, ordering, or the official CVSS score
+algorithm. Consumers must always retain and display `cvss_bte`.
 
-The reference `assess` path scores the CVSS vector as supplied. It does not
-resolve Exploit Maturity (`E`) from KEV, PoC, or other evidence. Integrations
-must determine `E` and place it in the CVSS vector before calling `assess`.
+The reference `assess` path resolves `E` before severity interpolation:
 
+- CISA KEV, Vulnrichment active, or organization-observed exploitation → `E:A`
+- Proof-of-concept without an Attacked condition → `E:P`
+- Completed ladder with no affirmative evidence → `E:U`
+- Explicit unresolved threat intelligence → `E:X`
+
+EPSS may be recorded as dated metadata and never sets `E`. Reports include
+`cvss.exploit_maturity` with the resolved value, ladder rung, and input vector.
 ## Normative AIVSS severity
 
 The normative AIVSS severity number equals CVSS-BTE:

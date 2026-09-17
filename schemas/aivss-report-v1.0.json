@@ -15,6 +15,7 @@
     "risk_category",
     "agentic_applicability",
     "cvss",
+    "agentic_ai_profile",
     "scores",
     "provenance"
   ],
@@ -22,7 +23,7 @@
     "aivss_version": {"const": "1.0"},
     "report_schema_version": {"const": "1.0"},
     "rubric_version": {"const": "1.0.0"},
-    "calculator_version": {"const": "1.0.0"},
+    "calculator_version": {"const": "1.0.1"},
     "specification_status": {"const": "candidate"},
     "finding_id": {"type": "string", "minLength": 1},
     "path_id": {"type": "string", "minLength": 1},
@@ -46,13 +47,47 @@
       ]
     },
     "riskCategory": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "name"],
-      "properties": {
-        "id": {"type": "string", "pattern": "^ASI(0[1-9]|10)$"},
-        "name": {"type": "string", "minLength": 1}
-      }
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "name", "scheme"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^ASI(0[1-9]|10)$"},
+            "name": {"type": "string", "minLength": 1},
+            "scheme": {"const": "ASI"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "name",
+            "scheme",
+            "maestro_layer",
+            "threat_description"
+          ],
+          "properties": {
+            "id": {"const": "MAESTRO-EXTENDED"},
+            "name": {"const": "MAESTRO-extended finding"},
+            "scheme": {"const": "MAESTRO-extended"},
+            "maestro_layer": {
+              "enum": [
+                "Foundation Models",
+                "Data Operations",
+                "Agent Frameworks",
+                "Deployment Infrastructure",
+                "Evaluation and Observability",
+                "Security and Compliance",
+                "Agent Ecosystem"
+              ]
+            },
+            "threat_description": {"type": "string", "minLength": 1},
+            "nearest_asi": {"type": "string", "pattern": "^ASI(0[1-9]|10)$"}
+          }
+        }
+      ]
     },
     "agenticApplicability": {
       "type": "object",
@@ -77,14 +112,41 @@
     "cvss": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["vector", "macrovector", "cvss_bte"],
+      "required": ["vector", "macrovector", "cvss_bte", "exploit_maturity"],
       "properties": {
         "vector": {
           "type": "string",
           "pattern": "^CVSS:4\\.0(?:/(?!LC:|CP:|AP:|SR:|EX:|PT:|CA:|TD:)[A-Z][A-Z0-9]*:[A-Za-z]+)+$"
         },
         "macrovector": {"type": "string", "pattern": "^[0-2]{6}$"},
-        "cvss_bte": {"$ref": "#/$defs/score"}
+        "cvss_bte": {"$ref": "#/$defs/score"},
+        "exploit_maturity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "e",
+            "rung",
+            "rationale",
+            "state",
+            "authoritative",
+            "epss",
+            "epss_date",
+            "input_vector"
+          ],
+          "properties": {
+            "e": {"enum": ["X", "A", "P", "U"]},
+            "rung": {"type": "string", "minLength": 1},
+            "rationale": {"type": "string", "minLength": 1},
+            "state": {"type": "string", "minLength": 1},
+            "authoritative": {"type": "boolean"},
+            "epss": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+            "epss_date": {"type": ["string", "null"], "minLength": 1},
+            "input_vector": {
+              "type": "string",
+              "pattern": "^CVSS:4\\.0(?:/(?!LC:|CP:|AP:|SR:|EX:|PT:|CA:|TD:)[A-Z][A-Z0-9]*:[A-Za-z]+)+$"
+            }
+          }
+        }
       }
     },
     "evidenceRecord": {

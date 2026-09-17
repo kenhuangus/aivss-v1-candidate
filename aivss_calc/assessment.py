@@ -19,9 +19,10 @@ from .ai_metrics import (
 )
 from .cvss_score import score_cvss_bte
 from .decision import ExploitationEvidence, decide
+from .exploit_maturity import apply_exploit_maturity, resolve_exploit_maturity
 from .macrovector import macrovector, parse_cvss_vector
 from .priority import compute_priority
-from .taxonomy import ASI_TOP_10, normalize_asi
+from .taxonomy import normalize_risk_category
 from .versions import (
     CALCULATOR_VERSION,
     REPORT_SCHEMA_VERSION,
@@ -111,6 +112,8 @@ class Assessment:
     vulnrichment_technical_impact: str | None = None
     include_decision: bool = True
     include_priority: bool = False
+    taxonomy_metadata: dict[str, Any] | None = None
+    exploit_maturity_unresolved: bool = False
 
 
 def assessment_from_payload(payload: dict[str, Any]) -> Assessment:
@@ -140,11 +143,21 @@ def assessment_from_payload(payload: dict[str, Any]) -> Assessment:
         vulnrichment_technical_impact=payload.get("vulnrichment_technical_impact"),
         include_decision=payload.get("include_decision", True),
         include_priority=payload.get("include_priority", False),
+        taxonomy_metadata=(
+            dict(payload["taxonomy_metadata"])
+            if payload.get("taxonomy_metadata") is not None
+            else None
+        ),
+        exploit_maturity_unresolved=payload.get("exploit_maturity_unresolved", False),
     )
 
 
 def assess(a: Assessment) -> dict[str, Any]:
-    """Produce a schema-conforming AIVSS candidate report for one exploit path."""
+    """Produce a schema-conforming AIVSS 1.0 report for one exploit path.
+
+    Level 1 conformance requires a complete Agentic AI Profile and resolves
+    Exploit Maturity (E) from the evidence ladder before CVSS-BTE scoring.
+    """
     if not isinstance(a.finding_id, str) or not a.finding_id.strip():
         raise ValueError("finding_id is required")
     if not isinstance(a.path_id, str) or not a.path_id.strip():
@@ -157,7 +170,12 @@ def assess(a: Assessment) -> dict[str, Any]:
         value = getattr(a, name)
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ValueError(f"{name} must be a non-empty string or omitted")
-    for name in ("fceb_bod_2604_scope", "include_decision", "include_priority"):
+    for name in (
+        "fceb_bod_2604_scope",
+        "include_decision",
+        "include_priority",
+        "exploit_maturity_unresolved",
+    ):
         if type(getattr(a, name)) is not bool:
             raise ValueError(f"{name} must be true or false")
     if not isinstance(a.metric_evidence, dict):
@@ -213,26 +231,31 @@ def assess(a: Assessment) -> dict[str, Any]:
         if a.aivss_vector is not None
         else embedded
     )
-    if profile is not None:
-        validate_metric_evidence(profile, a.metric_evidence)
-    elif a.metric_evidence:
+    if profile is None:
         raise ValueError(
-            "metric_evidence requires a complete aivss_vector / ai_profile; "
-            "omit both when the Agentic AI Profile is absent"
+            "Level 1 conformance requires a complete Agentic AI Profile "
+            "(aivss_vector or ai_profile with all eight metrics)"
         )
+    validate_metric_evidence(profile, a.metric_evidence)
     if a.provenance.assessed_at is None:
         raise ValueError(
             "provenance.assessed_at is required as an RFC 3339 evidence timestamp"
         )
 
-    metrics = parse_cvss_vector(cvss_only)
+    # (1) Resolve Exploit Maturity before severity interpolation.
+    maturity = resolve_exploit_maturity(
+        a.evidence, unresolved=a.exploit_maturity_unresolved
+    )
+    resolved_vector = apply_exploit_maturity(cvss_only, str(maturity["e"]))
+    metrics = parse_cvss_vector(resolved_vector)
     mv = macrovector(metrics)
-    cvss_bte = score_cvss_bte(cvss_only)
-    # Missing profile: effect class is not asserted (AX). Never treat as A0.
-    ai_class = profile.effect_class() if profile is not None else "AX"
-    td = profile.td if profile is not None else None
+    cvss_bte = score_cvss_bte(resolved_vector)
 
-    asi = normalize_asi(a.asi_category)
+    # (2)–(3) Score profile and effect class independently of CVSS.
+    ai_class = profile.effect_class()
+    td = profile.td
+
+    risk_category = normalize_risk_category(a.asi_category, a.taxonomy_metadata)
 
     report: dict[str, Any] = {
         "aivss_version": SPEC_VERSION,
@@ -242,9 +265,38 @@ def assess(a: Assessment) -> dict[str, Any]:
         "specification_status": "candidate",
         "finding_id": a.finding_id,
         "path_id": a.path_id,
-        "risk_category": {"id": asi, "name": ASI_TOP_10[asi]},
+        "risk_category": risk_category,
         "agentic_applicability": dict(applicability),
-        "cvss": {"vector": cvss_only, "macrovector": mv, "cvss_bte": cvss_bte},
+        "cvss": {
+            "vector": resolved_vector,
+            "macrovector": mv,
+            "cvss_bte": cvss_bte,
+            "exploit_maturity": {
+                "e": maturity["e"],
+                "rung": maturity["rung"],
+                "rationale": maturity["rationale"],
+                "state": maturity["state"],
+                "authoritative": maturity["authoritative"],
+                "epss": maturity["epss"],
+                "epss_date": maturity["epss_date"],
+                "input_vector": cvss_only,
+            },
+        },
+        "agentic_ai_profile": {
+            "vector": profile.to_vector(),
+            "metrics": {
+                name: {
+                    "value": getattr(profile, name.lower()),
+                    "label": AGENTIC_METRICS[name][getattr(profile, name.lower())][0],
+                    "evidence": dict(a.metric_evidence[name]),
+                }
+                for name in AGENTIC_METRIC_ORDER
+            },
+            "complete": profile.complete,
+            "agentic_effect_class": ai_class,
+            "agentic_effect_class_label": AGENTIC_EFFECT_CLASS_LABELS[ai_class],
+            "agentic_effect_class_status": EFFECT_CLASS_STATUS,
+        },
         "scores": {
             "mode1_interpretation": {
                 "aivss": cvss_bte,
@@ -262,23 +314,6 @@ def assess(a: Assessment) -> dict[str, Any]:
         report["title"] = a.title
     if a.summary is not None:
         report["summary"] = a.summary
-
-    if profile is not None:
-        report["agentic_ai_profile"] = {
-            "vector": profile.to_vector(),
-            "metrics": {
-                name: {
-                    "value": getattr(profile, name.lower()),
-                    "label": AGENTIC_METRICS[name][getattr(profile, name.lower())][0],
-                    "evidence": dict(a.metric_evidence[name]),
-                }
-                for name in AGENTIC_METRIC_ORDER
-            },
-            "complete": profile.complete,
-            "agentic_effect_class": ai_class,
-            "agentic_effect_class_label": AGENTIC_EFFECT_CLASS_LABELS[ai_class],
-            "agentic_effect_class_status": EFFECT_CLASS_STATUS,
-        }
 
     if a.include_decision:
         # CISA BOD 26-04 FAQ: unknown Publicly Exposed defaults to Yes.

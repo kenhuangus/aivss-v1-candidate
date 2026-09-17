@@ -1,10 +1,14 @@
-"""OWASP Top 10 for Agentic Applications 2026 (ASI01-ASI10).
+"""OWASP Top 10 for Agentic Applications 2026 (ASI01-ASI10) and MAESTRO-extended.
 
 Published December 9, 2025 by the OWASP GenAI Security Project and used as the
-AIVSS finding taxonomy. OWASP does not endorse this AIVSS candidate.
+AIVSS finding taxonomy. Findings outside ASI01–ASI10 that are validated through
+CSA MAESTRO (or equivalent) are recorded as MAESTRO-extended (Section 5.7).
+OWASP does not endorse this AIVSS candidate.
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 ASI_TOP_10: dict[str, str] = {
     "ASI01": "Agent Goal Hijack",
@@ -18,6 +22,9 @@ ASI_TOP_10: dict[str, str] = {
     "ASI09": "Human-Agent Trust Exploitation",
     "ASI10": "Rogue Agents",
 }
+
+MAESTRO_EXTENDED_ID = "MAESTRO-EXTENDED"
+MAESTRO_EXTENDED_NAME = "MAESTRO-extended finding"
 
 # Crosswalk from the withdrawn AIVSS v0.8 category list. ASI09 and ASI10 have no
 # v0.8 predecessor. "Agent Untraceability" has no ASI successor in OWASP Top 10;
@@ -35,6 +42,18 @@ V08_CATEGORY_CROSSWALK: dict[str, str | None] = {
     "Agent Untraceability": None,
 }
 
+MAESTRO_LAYERS: frozenset[str] = frozenset(
+    {
+        "Foundation Models",
+        "Data Operations",
+        "Agent Frameworks",
+        "Deployment Infrastructure",
+        "Evaluation and Observability",
+        "Security and Compliance",
+        "Agent Ecosystem",
+    }
+)
+
 
 def normalize_asi(value: str) -> str:
     """Resolve an ASI id or a withdrawn v0.8 category name to an ASI id."""
@@ -51,6 +70,57 @@ def normalize_asi(value: str) -> str:
             )
         return mapped
     raise ValueError(
-        f"Unknown risk category {value!r}. Expected one of {sorted(ASI_TOP_10)} "
-        "or a withdrawn AIVSS v0.8 category name."
+        f"Unknown risk category {value!r}. Expected one of {sorted(ASI_TOP_10)}, "
+        f"{MAESTRO_EXTENDED_ID!r}, or a withdrawn AIVSS v0.8 category name."
     )
+
+
+def normalize_risk_category(
+    value: str,
+    taxonomy_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return the report risk_category object for ASI or MAESTRO-extended findings."""
+    candidate = value.strip()
+    upper = candidate.upper().replace("_", "-")
+    if upper in ("MAESTRO-EXTENDED", "MAESTROEXTENDED"):
+        meta = taxonomy_metadata or {}
+        if not isinstance(meta, dict):
+            raise ValueError("taxonomy_metadata must be an object for MAESTRO-extended")
+        layer = meta.get("maestro_layer")
+        description = meta.get("threat_description")
+        if not isinstance(layer, str) or not layer.strip():
+            raise ValueError(
+                "MAESTRO-extended findings require taxonomy_metadata.maestro_layer"
+            )
+        if layer.strip() not in MAESTRO_LAYERS:
+            raise ValueError(
+                f"maestro_layer must be one of {sorted(MAESTRO_LAYERS)}; got {layer!r}"
+            )
+        if not isinstance(description, str) or not description.strip():
+            raise ValueError(
+                "MAESTRO-extended findings require "
+                "taxonomy_metadata.threat_description"
+            )
+        result: dict[str, Any] = {
+            "id": MAESTRO_EXTENDED_ID,
+            "name": MAESTRO_EXTENDED_NAME,
+            "scheme": "MAESTRO-extended",
+            "maestro_layer": layer.strip(),
+            "threat_description": description.strip(),
+        }
+        nearest = meta.get("nearest_asi")
+        if nearest is not None:
+            result["nearest_asi"] = normalize_asi(str(nearest))
+        return result
+
+    if taxonomy_metadata:
+        raise ValueError(
+            "taxonomy_metadata is only valid with risk_category "
+            f"{MAESTRO_EXTENDED_ID!r}"
+        )
+    asi = normalize_asi(candidate)
+    return {
+        "id": asi,
+        "name": ASI_TOP_10[asi],
+        "scheme": "ASI",
+    }

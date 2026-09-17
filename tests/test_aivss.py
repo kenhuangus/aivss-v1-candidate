@@ -867,21 +867,82 @@ class TestEndToEnd:
         assert report["agentic_ai_profile"]["agentic_effect_class"] == "A0"
         assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_CVSS_BTE
 
-    def test_assess_without_profile_allowed(self):
+    def test_assess_without_profile_rejected(self):
+        with pytest.raises(ValueError, match="Level 1 conformance requires"):
+            assess(
+                Assessment(
+                    finding_id="x",
+                    path_id="x-path",
+                    cvss_vector=EXAMPLE_VECTOR,
+                    asi_category="ASI06",
+                    agentic_applicability=dict(APPLICABILITY),
+                    include_decision=False,
+                    provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
+                )
+            )
+
+    def test_assess_resolves_exploit_maturity_from_evidence(self):
+        report = assess(
+            Assessment(
+                finding_id="x",
+                path_id="x-path",
+                cvss_vector="CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:L/VA:L/SC:H/SI:N/SA:N/E:U",
+                aivss_vector=EXAMPLE_AI,
+                asi_category="ASI06",
+                agentic_applicability=dict(APPLICABILITY),
+                metric_evidence=dict(METRIC_EVIDENCE),
+                evidence=ExploitationEvidence(poc=True),
+                include_decision=False,
+                provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
+            )
+        )
+        assert report["cvss"]["exploit_maturity"]["e"] == "P"
+        assert report["cvss"]["vector"].endswith("/E:P")
+        assert report["cvss"]["exploit_maturity"]["rung"] == "poc"
+
+    def test_assess_observed_local_sets_e_attacked(self):
         report = assess(
             Assessment(
                 finding_id="x",
                 path_id="x-path",
                 cvss_vector=EXAMPLE_VECTOR,
+                aivss_vector=EXAMPLE_AI,
                 asi_category="ASI06",
                 agentic_applicability=dict(APPLICABILITY),
+                metric_evidence=dict(METRIC_EVIDENCE),
+                evidence=ExploitationEvidence(observed_local=True),
                 include_decision=False,
                 provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
             )
         )
-        assert "agentic_ai_profile" not in report
-        assert report["scores"]["mode1_interpretation"]["aivss"] == EXAMPLE_CVSS_BTE
+        assert report["cvss"]["exploit_maturity"]["e"] == "A"
+        assert "/E:A" in report["cvss"]["vector"]
 
+    def test_maestro_extended_taxonomy(self):
+        report = assess(
+            Assessment(
+                finding_id="maestro-1",
+                path_id="maestro-1-path",
+                cvss_vector=EXAMPLE_VECTOR,
+                aivss_vector=EXAMPLE_AI,
+                asi_category="MAESTRO-EXTENDED",
+                taxonomy_metadata={
+                    "maestro_layer": "Agent Frameworks",
+                    "threat_description": "Planner bypasses tool allowlist via hidden capability.",
+                    "nearest_asi": "ASI02",
+                },
+                agentic_applicability=dict(APPLICABILITY),
+                metric_evidence=dict(METRIC_EVIDENCE),
+                evidence=ExploitationEvidence(poc=True),
+                include_decision=False,
+                provenance=Provenance(assessed_at="2026-08-27T00:00:00Z"),
+            )
+        )
+        assert report["risk_category"]["id"] == "MAESTRO-EXTENDED"
+        assert report["risk_category"]["scheme"] == "MAESTRO-extended"
+        assert report["risk_category"]["maestro_layer"] == "Agent Frameworks"
+        assert report["risk_category"]["nearest_asi"] == "ASI02"
+        validate_report(report)
     def test_priority_omitted_when_not_requested(self):
         assert "priority" not in self._assessment(include_priority=False)
 

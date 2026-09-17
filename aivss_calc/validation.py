@@ -27,6 +27,7 @@ from .decision import (
     decide,
 )
 from .macrovector import macrovector, parse_cvss_vector
+from .exploit_maturity import apply_exploit_maturity
 from .priority import compute_priority
 from .taxonomy import ASI_TOP_10
 
@@ -112,8 +113,16 @@ def validate_report(report: dict[str, Any]) -> None:
         raise ValueError("agentic_applicability evidence must not be whitespace-only")
 
     asi = report["risk_category"]
-    if ASI_TOP_10[asi["id"]] != asi["name"]:
-        raise ValueError("risk_category name does not match its ASI identifier")
+    if asi.get("scheme") == "MAESTRO-extended":
+        if asi.get("id") != "MAESTRO-EXTENDED":
+            raise ValueError("MAESTRO-extended risk_category id mismatch")
+        if asi.get("name") != "MAESTRO-extended finding":
+            raise ValueError("MAESTRO-extended risk_category name mismatch")
+    elif asi.get("scheme") == "ASI":
+        if ASI_TOP_10[asi["id"]] != asi["name"]:
+            raise ValueError("risk_category name does not match its ASI identifier")
+    else:
+        raise ValueError("risk_category.scheme must be ASI or MAESTRO-extended")
 
     cvss = report["cvss"]
     expected_cvss = score_cvss_bte(cvss["vector"])
@@ -122,37 +131,42 @@ def validate_report(report: dict[str, Any]) -> None:
     expected_macrovector = macrovector(parse_cvss_vector(cvss["vector"]))
     if cvss["macrovector"] != expected_macrovector:
         raise ValueError("macrovector does not match the CVSS vector")
+    maturity = cvss.get("exploit_maturity")
+    if not isinstance(maturity, dict):
+        raise ValueError("cvss.exploit_maturity is required")
+    if apply_exploit_maturity(maturity["input_vector"], maturity["e"]) != cvss["vector"]:
+        raise ValueError("cvss.vector does not match resolved Exploit Maturity")
 
     extension = report.get("agentic_ai_profile")
-    profile = None
-    if extension is not None:
-        profile = parse_aivss_vector(extension["vector"])
-        for name in AGENTIC_METRIC_ORDER:
-            value = getattr(profile, name.lower())
-            if extension["metrics"][name]["value"] != value:
-                raise ValueError(f"{name} does not match the AIVSS vector")
-            if extension["metrics"][name]["label"] != AGENTIC_METRICS[name][value][0]:
-                raise ValueError(f"{name} label does not match its value")
-        validate_metric_evidence(
-            profile,
-            {
-                name: extension["metrics"][name]["evidence"]
-                for name in AGENTIC_METRIC_ORDER
-            },
+    if extension is None:
+        raise ValueError("Level 1 reports require agentic_ai_profile")
+    profile = parse_aivss_vector(extension["vector"])
+    for name in AGENTIC_METRIC_ORDER:
+        value = getattr(profile, name.lower())
+        if extension["metrics"][name]["value"] != value:
+            raise ValueError(f"{name} does not match the AIVSS vector")
+        if extension["metrics"][name]["label"] != AGENTIC_METRICS[name][value][0]:
+            raise ValueError(f"{name} label does not match its value")
+    validate_metric_evidence(
+        profile,
+        {
+            name: extension["metrics"][name]["evidence"]
+            for name in AGENTIC_METRIC_ORDER
+        },
+    )
+    if extension["complete"] != profile.complete:
+        raise ValueError("profile complete flag does not match metric values")
+    if extension["agentic_effect_class"] != profile.effect_class():
+        raise ValueError("agentic_effect_class does not match the AIVSS vector")
+    if (
+        extension["agentic_effect_class_label"]
+        != AGENTIC_EFFECT_CLASS_LABELS[profile.effect_class()]
+    ):
+        raise ValueError("agentic_effect_class_label does not match the class")
+    if extension["agentic_effect_class_status"] != "candidate-unvalidated":
+        raise ValueError(
+            "agentic_effect_class_status must disclose candidate validity"
         )
-        if extension["complete"] != profile.complete:
-            raise ValueError("profile complete flag does not match metric values")
-        if extension["agentic_effect_class"] != profile.effect_class():
-            raise ValueError("agentic_effect_class does not match the AIVSS vector")
-        if (
-            extension["agentic_effect_class_label"]
-            != AGENTIC_EFFECT_CLASS_LABELS[profile.effect_class()]
-        ):
-            raise ValueError("agentic_effect_class_label does not match the class")
-        if extension["agentic_effect_class_status"] != "candidate-unvalidated":
-            raise ValueError(
-                "agentic_effect_class_status must disclose candidate validity"
-            )
 
     mode1 = report["scores"]["mode1_interpretation"]
     if mode1["aivss"] != expected_cvss or mode1["cvss_bte"] != expected_cvss:

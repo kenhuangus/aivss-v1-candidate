@@ -34,7 +34,14 @@ from .decision import (
 from .cvss_score import score_cvss_bte
 from .macrovector import macrovector, macrovector_score, parse_cvss_vector
 from .priority import compute_priority, priority_band
-from .taxonomy import ASI_TOP_10, V08_CATEGORY_CROSSWALK, normalize_asi
+from .taxonomy import (
+    ASI_TOP_10,
+    MAESTRO_EXTENDED_ID,
+    V08_CATEGORY_CROSSWALK,
+    normalize_asi,
+    normalize_risk_category,
+)
+from .exploit_maturity import apply_exploit_maturity, resolve_exploit_maturity
 from .versions import CALCULATOR_VERSION, SPEC_VERSION
 
 __version__ = CALCULATOR_VERSION
@@ -48,6 +55,7 @@ __all__ = [
     "Assessment",
     "BOD_2604_TABLE",
     "ExploitationEvidence",
+    "MAESTRO_EXTENDED_ID",
     "OrgContext",
     "Provenance",
     "SRClassification",
@@ -55,6 +63,7 @@ __all__ = [
     "TIMELINE_LABELS",
     "V08_CATEGORY_CROSSWALK",
     "__version__",
+    "apply_exploit_maturity",
     "assess",
     "assessment_from_payload",
     "bod_timeline",
@@ -63,8 +72,10 @@ __all__ = [
     "macrovector",
     "macrovector_score",
     "normalize_asi",
+    "normalize_risk_category",
     "parse_cvss_vector",
     "priority_band",
+    "resolve_exploit_maturity",
     "score_cvss_bte",
     "classify_sr",
     "classify_ca",
