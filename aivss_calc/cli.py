@@ -324,10 +324,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("priority")
     p.add_argument("--severity", type=float, required=True)
     p.add_argument(
-        "--business-criticality", choices=("high", "medium", "low"), default="medium"
+        "--business-criticality", choices=("high", "medium", "low"), required=True
     )
-    p.add_argument("--reach", choices=("high", "medium", "low"), default="medium")
-    p.add_argument("--likelihood", type=float, default=0.5)
+    p.add_argument("--reach", choices=("high", "medium", "low"), required=True)
+    p.add_argument("--likelihood", type=float, required=True)
     p.set_defaults(func=cmd_priority)
 
     p = sub.add_parser(

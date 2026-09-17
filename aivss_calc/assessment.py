@@ -79,11 +79,11 @@ class Provenance:
 
 @dataclass
 class OrgContext:
-    """Optional, organization-internal priority inputs."""
+    """Optional, organization-internal priority inputs. All fields are required."""
 
-    business_criticality: str = "medium"
-    reach: str = "medium"
-    likelihood: float = 0.5
+    business_criticality: str
+    reach: str
+    likelihood: float
 
 
 @dataclass

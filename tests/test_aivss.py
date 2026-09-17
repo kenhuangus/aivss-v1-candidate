@@ -693,6 +693,9 @@ class TestTaxonomy:
             normalize_asi("Not A Category")
 
 
+MEDIUM_CONTEXT = {"business_criticality": "medium", "reach": "medium", "likelihood": 0.5}
+
+
 class TestPriority:
     def test_geometric_mean(self):
         result = compute_priority(
@@ -701,7 +704,8 @@ class TestPriority:
         assert result["aivss_p"] == 87
 
     def test_zero_likelihood_yields_zero(self):
-        assert compute_priority(severity=10.0, likelihood=0.0)["aivss_p"] == 0
+        context = {**MEDIUM_CONTEXT, "likelihood": 0.0}
+        assert compute_priority(severity=10.0, **context)["aivss_p"] == 0
 
     def test_maximum_reaches_100(self):
         assert (
@@ -713,27 +717,37 @@ class TestPriority:
 
     def test_critical_severity_with_median_context_is_not_backlogged(self):
         """The withdrawn Track P returned 'Track' here, which was indefensible."""
-        result = compute_priority(severity=9.5, likelihood=0.5)
+        result = compute_priority(severity=9.5, **MEDIUM_CONTEXT)
         assert result["band"] != "Backlog"
 
     def test_monotone_in_every_term(self):
-        base = compute_priority(severity=5.0, likelihood=0.5)["aivss_p"]
-        assert compute_priority(severity=6.0, likelihood=0.5)["aivss_p"] > base
-        assert compute_priority(severity=5.0, likelihood=0.6)["aivss_p"] > base
-        assert (
-            compute_priority(severity=5.0, business_criticality="high", likelihood=0.5)[
-                "aivss_p"
-            ]
-            > base
-        )
+        base = compute_priority(severity=5.0, **MEDIUM_CONTEXT)["aivss_p"]
+        assert compute_priority(severity=6.0, **MEDIUM_CONTEXT)["aivss_p"] > base
+        higher_likelihood = {**MEDIUM_CONTEXT, "likelihood": 0.6}
+        assert compute_priority(severity=5.0, **higher_likelihood)["aivss_p"] > base
+        high_criticality = {**MEDIUM_CONTEXT, "business_criticality": "high"}
+        assert compute_priority(severity=5.0, **high_criticality)["aivss_p"] > base
+        high_reach = {**MEDIUM_CONTEXT, "reach": "high"}
+        assert compute_priority(severity=5.0, **high_reach)["aivss_p"] > base
 
     def test_invalid_inputs_rejected(self):
         with pytest.raises(ValueError):
-            compute_priority(severity=11.0)
+            compute_priority(severity=11.0, **MEDIUM_CONTEXT)
         with pytest.raises(ValueError):
-            compute_priority(severity=5.0, likelihood=2.0)
+            compute_priority(severity=5.0, **{**MEDIUM_CONTEXT, "likelihood": 2.0})
         with pytest.raises(ValueError, match="business_criticality"):
-            compute_priority(severity=5.0, business_criticality="critical")
+            compute_priority(
+                severity=5.0, **{**MEDIUM_CONTEXT, "business_criticality": "critical"}
+            )
+
+    @pytest.mark.parametrize("missing", sorted(MEDIUM_CONTEXT))
+    def test_unknown_context_is_not_defaulted(self, missing):
+        """Unknown organizational inputs must be recorded, never filled in (Section 16)."""
+        context = {k: v for k, v in MEDIUM_CONTEXT.items() if k != missing}
+        with pytest.raises(TypeError, match=missing):
+            compute_priority(severity=5.0, **context)
+        with pytest.raises(TypeError, match=missing):
+            OrgContext(**context)
 
 
 class TestLegacyAnnexB:

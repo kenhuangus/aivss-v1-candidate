@@ -163,6 +163,32 @@ def test_cli_rejects_partial_agentic_flags(capsys):
     assert "all eight AIVSS metrics are required" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    "missing", ["--business-criticality", "--reach", "--likelihood"]
+)
+def test_cli_priority_requires_every_org_input(capsys, missing):
+    flags = {
+        "--business-criticality": "high",
+        "--reach": "high",
+        "--likelihood": "0.72",
+    }
+    argv = ["priority", "--severity", "7.8"]
+    for flag, value in flags.items():
+        if flag != missing:
+            argv += [flag, value]
+    with pytest.raises(SystemExit) as exc:
+        main(argv)
+    assert exc.value.code == 2
+    assert missing in capsys.readouterr().err
+
+
+def test_cli_priority_with_complete_org_inputs(capsys):
+    argv = ["priority", "--severity", "7.8", "--business-criticality", "high"]
+    argv += ["--reach", "high", "--likelihood", "0.72"]
+    assert main(argv) == 0
+    assert json.loads(capsys.readouterr().out)["aivss_p"] == 87
+
+
 def test_cli_accepts_separate_extension_vector(capsys):
     vector = "AIVSS:1.0/LC:D/CP:C/AP:L/SR:R/EX:W/PT:H/CA:M/TD:H"
     assert main(["profile", CVSS, "--aivss-vector", vector]) == 0
