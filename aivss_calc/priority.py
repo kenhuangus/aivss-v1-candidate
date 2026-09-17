@@ -26,9 +26,9 @@ def _level(name: str, value: str) -> float:
 def compute_priority(
     *,
     severity: float,
-    business_criticality: str = "medium",
-    reach: str = "medium",
-    likelihood: float = 0.5,
+    business_criticality: str,
+    reach: str,
+    likelihood: float,
 ) -> dict[str, object]:
     """AIVSS-P = 100 x geometric_mean(S/10, BI, REACH, L).
 
@@ -37,6 +37,9 @@ def compute_priority(
       BI     business criticality of the affected asset
       REACH  deployment reach
       L      organization-defined residual likelihood after de-duplication
+
+    Every term is required. Unknown organizational context is not a default:
+    callers must record the missing input and skip the index instead.
     """
     if isinstance(severity, bool) or not isinstance(severity, (int, float)):
         raise ValueError("severity must be a number in [0.0, 10.0]")
