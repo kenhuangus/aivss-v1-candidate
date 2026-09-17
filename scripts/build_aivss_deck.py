@@ -652,9 +652,9 @@ SLIDES_DATA = [
         "number": 23,
         "slide_type": "thanks",
         "raw_lines": [
-            "Thank You",
-            "AIVSS 1.0 — Agentic AI Vulnerability Scoring System",
-            "github.com/kenhuangus/aivss-v1-candidate · aivss.owasp.org"
+            "Thank you",
+            "Graph Engineering for Agentic AI Systems · Harness Engineering",
+            "amazon.com/dp/B0HHZVDQQY · amazon.com/dp/B0HF3F86YM"
         ]
     }
 ]
@@ -1053,35 +1053,35 @@ JS_CODE = r"""
       return `
         <div id="slide-content-wrap" class="thanks-wrap idea-slide">
           <div class="thanks-header">
-            <div class="thanks-kicker">OWASP AIVSS 1.0 · Authoritative Ecosystem Resources</div>
-            <div class="thanks-lede">Securing Autonomous and Agentic AI Systems Across Standards and Production Harms</div>
+            <div class="thanks-kicker">Packt · Further reading</div>
+            <div class="thanks-lede">Two companion Kindle books by Ken Huang</div>
           </div>
           <div class="thanks-books">
-            <a class="thanks-book-card" href="https://github.com/kenhuangus/aivss-v1-candidate" target="_blank" rel="noopener noreferrer" title="AIVSS 1.0 GitHub Repository">
+            <a class="thanks-book-card" href="https://www.amazon.com/dp/B0HHZVDQQY" target="_blank" rel="noopener noreferrer" title="Graph Engineering for Agentic AI Systems on Amazon">
               <div class="thanks-book-cover">
-                <img src="assets/images/graph_engineering_book.jpg" alt="AIVSS 1.0 Specification & Calculator" />
+                <img src="assets/images/graph_engineering_book.jpg" alt="Graph Engineering for Agentic AI Systems book cover" />
               </div>
-              <div class="thanks-book-tag">GitHub · Open Source</div>
-              <div class="thanks-book-title">AIVSS 1.0 Specification &amp; Calculator</div>
-              <div class="thanks-book-asin"><span>github.com/kenhuangus/aivss-v1-candidate ↗</span></div>
+              <div class="thanks-book-tag">Kindle · B0HHZVDQQY</div>
+              <div class="thanks-book-title">Graph Engineering for Agentic AI Systems</div>
+              <div class="thanks-book-asin"><span>Amazon ↗</span></div>
             </a>
-            <a class="thanks-book-card" href="https://aivss.owasp.org/" target="_blank" rel="noopener noreferrer" title="OWASP AIVSS Project">
+            <a class="thanks-book-card" href="https://www.amazon.com/dp/B0HF3F86YM" target="_blank" rel="noopener noreferrer" title="Harness Engineering on Amazon">
               <div class="thanks-book-cover">
-                <img src="assets/images/harness_engineering_book.jpg" alt="OWASP AIVSS Project Portal" />
+                <img src="assets/images/harness_engineering_book.jpg" alt="Harness Engineering book cover" />
               </div>
-              <div class="thanks-book-tag">OWASP Official Project</div>
-              <div class="thanks-book-title">OWASP Agentic AI Vulnerability Scoring</div>
-              <div class="thanks-book-asin"><span>aivss.owasp.org ↗</span></div>
+              <div class="thanks-book-tag">Kindle · B0HF3F86YM</div>
+              <div class="thanks-book-title">Harness Engineering</div>
+              <div class="thanks-book-asin"><span>Amazon ↗</span></div>
             </a>
           </div>
           <div class="thanks-footer thanks-link">
-            <a href="https://aivss.owasp.org/" target="_blank" rel="noopener noreferrer">aivss.owasp.org ↗</a>
-            &nbsp;·&nbsp;
-            <a href="https://github.com/kenhuangus/aivss-v1-candidate" target="_blank" rel="noopener noreferrer">github.com/kenhuangus/aivss-v1-candidate ↗</a>
-            &nbsp;·&nbsp;
             <a href="https://distributedapps.ai/" target="_blank" rel="noopener noreferrer">distributedapps.ai ↗</a>
             &nbsp;·&nbsp;
             <a href="https://kenhuangus.substack.com/" target="_blank" rel="noopener noreferrer">kenhuangus.substack.com ↗</a>
+            &nbsp;·&nbsp;
+            <a href="https://aivss.owasp.org/" target="_blank" rel="noopener noreferrer">aivss.owasp.org ↗</a>
+            &nbsp;·&nbsp;
+            <a href="https://github.com/kenhuangus/aivss-v1-candidate" target="_blank" rel="noopener noreferrer">github.com/kenhuangus/aivss-v1-candidate ↗</a>
           </div>
         </div>`;
     }
