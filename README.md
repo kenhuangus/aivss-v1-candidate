@@ -63,6 +63,16 @@ pytest   # full suite
 aivss-calc verify
 ```
 
+The in-browser calculator has its own end-to-end tests. They need Playwright, a
+Chromium browser, and network access, so they are skipped unless explicitly
+enabled:
+
+```bash
+pip install -e ".[dev,browser]"
+playwright install chromium
+AIVSS_BROWSER_TESTS=1 pytest tests/test_web_calculator_browser.py
+```
+
 ## CLI
 
 ```bash
@@ -72,9 +82,21 @@ aivss-calc rubric
 aivss-calc demo
 ```
 
-Launch **`aivss-calc demo`** to open the OWASP Agentic Top 10 dashboard at
-http://127.0.0.1:8765/ — CVSS-BTE severity scores, effect classes, and
-SSVC/BOD remediation timelines for all ten ASI reference scenarios.
+## Web calculator
+
+Launch **`aivss-calc demo`** and open http://127.0.0.1:8765/ to score a finding
+interactively: pick the CVSS v4.0 and Agentic AI metrics (or paste a vector
+pair), and the page shows the CVSS-BTE severity with its qualitative rating, the
+Agentic AI Effect Class, the MacroVector, and — when enabled — the SSVC / BOD
+26-04 remediation timeline with the A2 overlay. The ten OWASP Agentic Top 10
+reference scenarios are available as presets, and every result has a shareable
+link that carries the vectors.
+
+The page runs this package itself through
+[Pyodide](https://pyodide.org/) (`web/engine.js` loads the bundle served at
+`py/aivss_calc.zip`), so browser results come from the same code as the CLI and
+cannot drift from it. Loading the runtime takes a few seconds on first visit and
+needs network access to the Pyodide CDN; the CLI works offline.
 
 Live demo (GitHub Pages): https://kenhuangus.github.io/aivss-v1-candidate/
 Interactive slide deck: https://kenhuangus.github.io/aivss-v1-candidate/slides.html

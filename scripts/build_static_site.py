@@ -18,6 +18,7 @@ def build(out_dir: Path, base_href: str = DEFAULT_BASE) -> None:
     from aivss_calc.assessment import assess, assessment_from_payload
     from aivss_calc.demo_server import _top10_payload
     from aivss_calc.scenarios import SCENARIOS, scenario_payload
+    from aivss_calc.web_bundle import BUNDLE_NAME, manifest, package_zip
 
     if out_dir.exists():
         shutil.rmtree(out_dir)
@@ -30,7 +31,7 @@ def build(out_dir: Path, base_href: str = DEFAULT_BASE) -> None:
             if path.name == "assets":
                 shutil.copytree(path, out_dir / "assets", dirs_exist_ok=True)
             continue
-        if path.name in {"style.css", "app.js"}:
+        if path.suffix in {".css", ".js"}:
             shutil.copy2(path, web_out / path.name)
         else:
             shutil.copy2(path, out_dir / path.name)
@@ -50,6 +51,14 @@ def build(out_dir: Path, base_href: str = DEFAULT_BASE) -> None:
             json.dumps(detail, indent=2) + "\n",
             encoding="utf-8",
         )
+
+    py_dir = out_dir / "py"
+    py_dir.mkdir()
+    py_dir.joinpath(BUNDLE_NAME).write_bytes(package_zip())
+    py_dir.joinpath("manifest.json").write_text(
+        json.dumps(manifest(), indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     index_path = out_dir / "index.html"
     html = index_path.read_text(encoding="utf-8")

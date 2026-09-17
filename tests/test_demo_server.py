@@ -38,7 +38,15 @@ def _get(host: str, port: int, path: str) -> tuple[int, bytes]:
 
 def test_demo_index_and_assets():
     def run(host, port):
-        for path in ("/", "/favicon.ico", "/web/style.css", "/web/app.js"):
+        for path in (
+            "/",
+            "/favicon.ico",
+            "/web/style.css",
+            "/web/app.js",
+            "/web/engine.js",
+            "/web/calculator.js",
+            "/py/aivss_calc.zip",
+        ):
             status, body = _get(host, port, path)
             assert status == 200, path
             assert body, path
@@ -63,6 +71,18 @@ def test_demo_top10_api():
     _with_server(run)
 
 
+def test_demo_python_bundle_manifest():
+    def run(host, port):
+        status, body = _get(host, port, "/py/manifest.json")
+        assert status == 200
+        manifest = json.loads(body)
+        assert manifest["bundle"] == "py/aivss_calc.zip"
+        assert manifest["pyodide_index_url"].startswith("https://cdn.jsdelivr.net/pyodide/")
+        assert manifest["packages"] and manifest["packages"][0].startswith("cvss==")
+
+    _with_server(run)
+
+
 def test_static_build_includes_web_assets():
     import importlib.util
 
@@ -82,7 +102,11 @@ def test_static_build_includes_web_assets():
             out / "favicon.ico",
             out / "web" / "style.css",
             out / "web" / "app.js",
+            out / "web" / "engine.js",
+            out / "web" / "calculator.js",
             out / "data" / "top10.json",
+            out / "py" / "aivss_calc.zip",
+            out / "py" / "manifest.json",
         ):
             assert path.is_file(), path
         html = (out / "index.html").read_text(encoding="utf-8")

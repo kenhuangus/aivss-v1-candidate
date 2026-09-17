@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AIVSS — OWASP Agentic Top 10 Demo</title>
+  <title>AIVSS 1.0 Calculator</title>
   <link rel="icon" href="favicon.ico" sizes="any" />
   <link rel="shortcut icon" href="favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -26,65 +26,206 @@
       <span class="brand-name">AIVSS Calculator</span>
     </a>
     <nav class="site-nav" aria-label="Primary">
+      <a href="#calculator">Calculator</a>
       <a href="#scores">Top 10 Scores</a>
       <a href="https://github.com/kenhuangus/aivss-v1-candidate" target="_blank" rel="noopener">GitHub</a>
       <a href="https://aivss.owasp.org/" target="_blank" rel="noopener">OWASP AIVSS</a>
+      <a href="https://github.com/kenhuangus/aivss-v1-candidate/blob/main/docs/METRIC-RUBRIC.md" target="_blank" rel="noopener">Metric Rubric</a>
       <a href="https://github.com/kenhuangus/aivss-v1-candidate/blob/main/docs/SSVC.md" target="_blank" rel="noopener">SSVC Layer 3</a>
-      <a href="https://github.com/kenhuangus/aivss-v1-candidate/blob/main/docs/SCORING.md" target="_blank" rel="noopener">Scoring</a>
     </nav>
   </header>
 
-  <section class="hero">
+  <section class="hero hero-compact">
     <div class="hero-inner">
-      <p class="hero-eyebrow">AIVSS Calculator · SSVC / BOD 26-04</p>
-      <h1 class="hero-title">
-        OWASP Agentic Top 10<br />
-        <span class="hero-accent">AIVSS Severity Scores</span>
-      </h1>
+      <p class="hero-eyebrow">OWASP AIVSS 1.0 · Reference Calculator</p>
+      <h1 class="hero-title">Score an agentic AI finding</h1>
       <p class="hero-lede">
-        Live AIVSS severity (<code>CVSS-BTE</code>), Agentic AI Effect Class,
-        and SSVC-based remediation timelines for all ten ASI reference scenarios.
+        Start from an OWASP Agentic Top 10 example or pick the metrics yourself.
+        Severity equals CVSS-BTE; the Agentic AI Profile, Effect Class and an optional
+        SSVC / BOD 26-04 remediation timeline are reported alongside it.
       </p>
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="#scores">View Scores</a>
-        <a class="btn btn-outline" href="https://github.com/kenhuangus/aivss-v1-candidate/blob/main/docs/SSVC.md" target="_blank" rel="noopener">
-          SSVC Documentation
-          <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-      </div>
       <div class="hero-badges">
         <span class="pill">CVSS-BTE normative</span>
+        <span class="pill">Runs the reference Python calculator in your browser</span>
         <span class="pill pill-accent">cisa:DT_BOD2604:1.0.0</span>
       </div>
     </div>
   </section>
 
-  <main id="scores" class="main">
-    <section class="section-head">
-      <h2 class="section-title">OWASP Agentic Top 10</h2>
-      <p class="section-lede">
-        Synthetic reference fixtures demonstrating AIVSS calculation, SSVC Layer 3
-        remediation analogies, and the A2 candidate overlay — not real incidents.
-      </p>
+  <main class="main">
+    <section id="calculator" class="calculator" aria-labelledby="calculator-title">
+      <h2 id="calculator-title" class="visually-hidden">Calculator</h2>
+
+      <div class="panel presets">
+        <div class="presets-head">
+          <span class="field-label">Start from an example</span>
+          <span id="preset-status" class="preset-status">Loading examples…</span>
+        </div>
+        <div id="preset-list" class="preset-list" role="group" aria-label="ASI examples"></div>
+      </div>
+
+      <form id="vector-form" class="panel vector-form" autocomplete="off">
+        <label class="field">
+          <span class="field-label">CVSS v4.0 vector</span>
+          <input id="cvss-input" type="text" spellcheck="false" placeholder="CVSS:4.0/AV:N/AC:L/…" />
+        </label>
+        <label class="field">
+          <span class="field-label">AIVSS vector</span>
+          <input id="aivss-input" type="text" spellcheck="false" placeholder="AIVSS:1.0/LC:D/CP:C/…" />
+        </label>
+        <button type="submit" class="btn btn-outline btn-sm">Load vectors</button>
+        <p id="vector-error" class="inline-error" role="alert" hidden></p>
+      </form>
+
+      <div class="calc-layout">
+        <div class="calc-form">
+          <fieldset class="panel metric-panel">
+            <legend>CVSS v4.0 · Base</legend>
+            <div id="cvss-base" class="metric-groups"></div>
+          </fieldset>
+
+          <fieldset class="panel metric-panel">
+            <legend>CVSS v4.0 · Threat</legend>
+            <div id="cvss-threat" class="metric-groups"></div>
+          </fieldset>
+
+          <details class="panel metric-panel">
+            <summary>CVSS v4.0 · Environmental <span class="muted">(optional; Not Defined by default)</span></summary>
+            <div id="cvss-env" class="metric-groups"></div>
+          </details>
+
+          <fieldset class="panel metric-panel">
+            <legend>Agentic AI Profile · classifying metrics</legend>
+            <p class="panel-note">LC, CP, AP and SR determine the Agentic AI Effect Class. X records insufficient evidence; it is not a benign default.</p>
+            <div id="aivss-classifying" class="metric-groups"></div>
+          </fieldset>
+
+          <fieldset class="panel metric-panel">
+            <legend>Agentic AI Profile · assurance metrics</legend>
+            <p class="panel-note">EX, PT, CA and TD are descriptive and do not change the score.</p>
+            <div id="aivss-assurance" class="metric-groups"></div>
+          </fieldset>
+
+          <fieldset class="panel metric-panel" id="decision-panel">
+            <legend>Remediation timeline · SSVC / BOD 26-04 (Level 2)</legend>
+            <label class="toggle">
+              <input id="decision-enabled" type="checkbox" />
+              <span>Compute a remediation timeline</span>
+            </label>
+            <div id="decision-fields" class="decision-fields" hidden>
+              <div class="metric-group">
+                <span class="metric-name">Publicly exposed</span>
+                <div class="options" data-decision="publicly_exposed" data-choices="true:Yes,false:No"></div>
+              </div>
+              <label class="field">
+                <span class="field-label">Exposure source</span>
+                <input id="exposure-source" type="text" placeholder="e.g. asset inventory, external scan" />
+              </label>
+              <div class="metric-group">
+                <span class="metric-name">Automatable</span>
+                <div class="options" data-decision="automatable" data-choices="true:Yes,false:No"></div>
+              </div>
+              <div class="metric-group">
+                <span class="metric-name">Technical impact</span>
+                <div class="options" data-decision="technical_impact" data-choices="partial:Partial,total:Total"></div>
+              </div>
+              <div class="metric-group">
+                <span class="metric-name">Exploitation evidence</span>
+                <div class="options" data-decision="evidence" data-choices="none:None supplied,poc:Proof of concept,observed_local:Observed locally"></div>
+              </div>
+              <details class="cve-details">
+                <summary>CVE finding <span class="muted">(KEV, BOD 26-04 scope)</span></summary>
+                <label class="field">
+                  <span class="field-label">CVE ID</span>
+                  <input id="cve-id" type="text" spellcheck="false" placeholder="CVE-2025-32711" />
+                </label>
+                <div class="metric-group">
+                  <span class="metric-name">Listed in CISA KEV</span>
+                  <div class="options" data-decision="kev" data-choices="true:Yes,false:No"></div>
+                </div>
+                <p class="panel-note">For a KEV-listed CVE, Automatable and Technical impact above are recorded as the CISA Vulnrichment values.</p>
+                <label class="toggle">
+                  <input id="fceb-scope" type="checkbox" />
+                  <span>FCEB agency asset in BOD 26-04 scope (compliance result)</span>
+                </label>
+              </details>
+            </div>
+          </fieldset>
+        </div>
+
+        <aside class="result-panel" aria-live="polite">
+          <div class="panel result-card">
+            <p id="engine-status" class="engine-status">Loading calculator runtime…</p>
+            <div id="result" hidden>
+              <div class="score-head">
+                <span class="score-label">AIVSS severity (CVSS-BTE)</span>
+                <div class="score-line">
+                  <span id="result-score" class="result-score">—</span>
+                  <span id="result-rating" class="rating">—</span>
+                </div>
+                <div class="bar"><span id="result-bar"></span></div>
+              </div>
+              <dl class="result-facts">
+                <div>
+                  <dt>Effect class</dt>
+                  <dd><span id="result-class" class="class-pill">—</span> <span id="result-class-label"></span></dd>
+                </div>
+                <div>
+                  <dt>MacroVector</dt>
+                  <dd><code id="result-macrovector">—</code></dd>
+                </div>
+              </dl>
+              <p id="result-class-status" class="muted small"></p>
+              <div class="vector-out">
+                <div class="vector-row">
+                  <code id="out-cvss"></code>
+                  <button type="button" class="btn-copy" data-copy="out-cvss">Copy</button>
+                </div>
+                <div class="vector-row">
+                  <code id="out-aivss"></code>
+                  <button type="button" class="btn-copy" data-copy="out-aivss">Copy</button>
+                </div>
+              </div>
+              <button id="share-link" type="button" class="btn btn-outline btn-sm btn-block">Copy share link</button>
+
+              <div id="decision-result" class="decision-result"></div>
+
+              <details class="raw-json">
+                <summary>Full calculator output (JSON)</summary>
+                <pre id="result-json"></pre>
+              </details>
+            </div>
+            <p id="result-error" class="inline-error" role="alert" hidden></p>
+          </div>
+        </aside>
+      </div>
     </section>
 
-    <div class="toolbar">
-      <label class="field">
-        <span class="field-label">Sort by</span>
-        <select id="sort-by">
-          <option value="asi">ASI ID</option>
-          <option value="mode1" selected>AIVSS score</option>
-          <option value="class">Effect class</option>
-        </select>
-      </label>
-      <button id="refresh" type="button" class="btn btn-outline btn-sm">Refresh live scores</button>
-    </div>
+    <section id="scores" class="scores">
+      <div class="section-head">
+        <h2 class="section-title">OWASP Agentic Top 10 examples</h2>
+        <p class="section-lede">
+          Synthetic reference fixtures demonstrating AIVSS calculation, SSVC Layer 3
+          remediation analogies, and the A2 candidate overlay — not real incidents.
+          Open any example in the calculator to explore it.
+        </p>
+      </div>
 
-    <section id="grid" class="grid" aria-live="polite"></section>
+      <div class="toolbar">
+        <label class="field">
+          <span class="field-label">Sort by</span>
+          <select id="sort-by">
+            <option value="asi">ASI ID</option>
+            <option value="mode1" selected>AIVSS score</option>
+            <option value="class">Effect class</option>
+          </select>
+        </label>
+      </div>
 
-    <section id="detail" class="detail hidden" role="dialog" aria-labelledby="detail-title">
+      <div id="grid" class="grid" aria-live="polite"></div>
+    </section>
+
+    <section id="detail" class="detail hidden" role="dialog" aria-modal="true" aria-labelledby="detail-title">
       <div class="detail-card">
         <button id="close-detail" type="button" class="detail-close" aria-label="Close">&times;</button>
         <h3 id="detail-title" class="detail-title"></h3>
@@ -96,11 +237,10 @@
   <footer class="site-footer">
     <p>
       Reference scenarios are synthetic fixtures for format and calculation demonstration.
-      Timeline overlays are <strong>experimental-uncalibrated</strong>.
-      BOD outcomes use CERT/CC SSVC decision table
-      <code>cisa:DT_BOD2604:1.0.0</code>.
-      AIVSS maps to the
-      <a href="https://aivss.owasp.org/" target="_blank" rel="noopener">OWASP AIVSS project</a>.
+      The Effect Class is candidate-unvalidated and timeline overlays are
+      <strong>experimental-uncalibrated</strong>. BOD outcomes use CERT/CC SSVC decision table
+      <code>cisa:DT_BOD2604:1.0.0</code>. CVSS is owned and managed by FIRST.Org, Inc.;
+      its use does not imply FIRST endorsement.
     </p>
     <p class="footer-brand">
       Open source AIVSS 1.0 ·
@@ -108,6 +248,8 @@
     </p>
   </footer>
 
+  <script src="web/engine.js"></script>
+  <script src="web/calculator.js"></script>
   <script src="web/app.js"></script>
 </body>
 </html>

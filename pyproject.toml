@@ -8,6 +8,7 @@ dependencies = ["cvss>=3.6,<4", "jsonschema>=4,<5"]
 
 [project.optional-dependencies]
 dev = ["pytest>=7,<9", "ruff>=0.12,<1", "build>=1,<2"]
+browser = ["playwright>=1.40,<2"]
 
 [project.scripts]
 aivss-calc = "aivss_calc.cli:main"

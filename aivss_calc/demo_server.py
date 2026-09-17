@@ -10,6 +10,7 @@ from urllib.parse import unquote, urlparse
 from . import __version__
 from .assessment import assess, assessment_from_payload
 from .scenarios import SCENARIOS, scenario_payload
+from .web_bundle import BUNDLE_NAME, manifest, package_zip
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WEB_ROOT = REPO_ROOT / "web"
@@ -69,6 +70,13 @@ class DemoHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_bytes(self, data: bytes, content_type: str) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     def _send_file(self, path: Path, content_type: str) -> None:
         if not path.is_file():
             self.send_error(404)
@@ -97,6 +105,14 @@ class DemoHandler(BaseHTTPRequestHandler):
                 return
             report = assess(assessment_from_payload(payload))
             self._send_json({"input": payload, "report": report})
+            return
+
+        if route == "/py/manifest.json":
+            self._send_json(manifest())
+            return
+
+        if route == f"/py/{BUNDLE_NAME}":
+            self._send_bytes(package_zip(), "application/zip")
             return
 
         if route in ("/", "/index.html"):
