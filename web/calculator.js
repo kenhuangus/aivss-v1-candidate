@@ -2,33 +2,6 @@
 // All scoring is delegated to window.AivssEngine (the Python reference code).
 // Text is always inserted with textContent, never as HTML.
 (function () {
-  const CVSS_NAMES = {
-    AV: "Attack Vector",
-    AC: "Attack Complexity",
-    AT: "Attack Requirements",
-    PR: "Privileges Required",
-    UI: "User Interaction",
-    VC: "Confidentiality",
-    VI: "Integrity",
-    VA: "Availability",
-    SC: "Confidentiality",
-    SI: "Integrity",
-    SA: "Availability",
-    E: "Exploit Maturity",
-    CR: "Confidentiality Requirement",
-    IR: "Integrity Requirement",
-    AR: "Availability Requirement",
-  };
-  const CVSS_VALUES = {
-    AV: { N: "Network", A: "Adjacent", L: "Local", P: "Physical" },
-    AC: { L: "Low", H: "High" },
-    AT: { N: "None", P: "Present" },
-    PR: { N: "None", L: "Low", H: "High" },
-    UI: { N: "None", P: "Passive", A: "Active" },
-    E: { A: "Attacked", P: "POC", U: "Unreported" },
-  };
-  const IMPACT_VALUES = { H: "High", L: "Low", N: "None", S: "Safety" };
-  const REQUIREMENT_VALUES = { H: "High", M: "Medium", L: "Low" };
   const BASE_GROUPS = [
     ["Exploitability", ["AV", "AC", "AT", "PR", "UI"]],
     ["Vulnerable system impact", ["VC", "VI", "VA"]],
@@ -106,25 +79,8 @@
     return [m.base, m.threat, m.requirements, m.modified].flatMap(Object.keys);
   }
 
-  function cvssValues(metric) {
-    const m = catalog.cvss_metrics;
-    return m.base[metric] || m.threat[metric] || m.requirements[metric] || m.modified[metric];
-  }
-
-  function cvssName(metric) {
-    if (CVSS_NAMES[metric]) return CVSS_NAMES[metric];
-    const base = metric.slice(1);
-    const system = ["SC", "SI", "SA"].includes(base) ? "Subsequent" : "Vulnerable";
-    const suffix = ["VC", "VI", "VA", "SC", "SI", "SA"].includes(base) ? ` (${system})` : "";
-    return `Modified ${CVSS_NAMES[base]}${suffix}`;
-  }
-
-  function cvssValueLabel(metric, code) {
-    if (code === "X") return "Not Defined";
-    const base = catalog.cvss_metrics.modified[metric] ? metric.slice(1) : metric;
-    if (CVSS_VALUES[base]) return CVSS_VALUES[base][code];
-    if (["CR", "IR", "AR"].includes(base)) return REQUIREMENT_VALUES[code];
-    return IMPACT_VALUES[code];
+  function cvssInfo(metric) {
+    return catalog.cvss_metric_info[metric];
   }
 
   function isBase(metric) {
@@ -188,26 +144,39 @@
     );
   }
 
-  function metricGroup(name, code, options, description) {
+  function metricGroup({ name, code, summary, options, description }) {
     return el(
       "div",
       { class: "metric-group" },
-      el("span", { class: "metric-name" }, name, " ", el("abbr", { text: code })),
+      el(
+        "span",
+        { class: "metric-name", title: summary },
+        name,
+        " ",
+        el("abbr", { text: code }),
+      ),
       el("div", { class: "options", role: "group", "aria-label": name }, ...options),
       description ? el("p", { class: "metric-desc", text: description }) : null,
     );
   }
 
   function cvssGroup(metric) {
+    const info = cvssInfo(metric);
     // Optional groups show "Not Defined" (X) as selected until a value is picked.
     const current = state.cvss[metric] ?? (isBase(metric) ? null : "X");
-    const options = cvssValues(metric).map((code) =>
-      optionButton(cvssValueLabel(metric, code), code, current === code, null, () => {
+    const options = Object.entries(info.values).map(([code, value]) =>
+      optionButton(value.label, code, current === code, value.summary, () => {
         state.cvss[metric] = code;
         changed();
       }),
     );
-    return metricGroup(cvssName(metric), metric, options, null);
+    return metricGroup({
+      name: info.name,
+      code: metric,
+      summary: info.summary,
+      options,
+      description: current ? info.values[current].summary : "Not selected yet.",
+    });
   }
 
   function aivssGroup(metric) {
@@ -219,10 +188,13 @@
         changed();
       }),
     );
-    const description = selected && values[selected]
-      ? values[selected].summary
-      : "Not selected yet.";
-    return metricGroup(catalog.metric_names[metric], metric, options, description);
+    return metricGroup({
+      name: catalog.metric_names[metric],
+      code: metric,
+      summary: catalog.metric_summaries[metric],
+      options,
+      description: selected && values[selected] ? values[selected].summary : "Not selected yet.",
+    });
   }
 
   function subgroup(title, metrics, render) {
@@ -234,8 +206,22 @@
     );
   }
 
+  function panelNote(containerId, text) {
+    const container = $(containerId);
+    const panel = container.parentElement;
+    let note = panel.querySelector(".panel-note.group-note");
+    if (!note) {
+      note = el("p", { class: "panel-note group-note" });
+      panel.insertBefore(note, container);
+    }
+    note.textContent = text;
+  }
+
   function renderForm() {
     const m = catalog.cvss_metrics;
+    panelNote("cvss-base", catalog.cvss_groups.base.summary);
+    panelNote("cvss-threat", catalog.cvss_groups.threat.summary);
+    panelNote("cvss-env", catalog.cvss_groups.environmental.summary);
     $("cvss-base").replaceChildren(
       ...BASE_GROUPS.map(([title, metrics]) => subgroup(title, metrics, cvssGroup)),
     );
@@ -265,6 +251,7 @@
     if (d.cve || d.kev !== null || d.fceb) $("decision-panel").querySelector(".cve-details").open = true;
     for (const container of document.querySelectorAll("[data-decision]")) {
       const key = container.dataset.decision;
+      const info = catalog.decision_inputs[key] ?? {};
       const choices = container.dataset.choices.split(",").map((c) => c.split(":"));
       container.replaceChildren(
         ...choices.map(([value, label]) =>
@@ -274,6 +261,7 @@
               type: "button",
               class: "opt",
               "aria-pressed": String(d[key] === value),
+              title: info.values?.[value],
               onclick: () => {
                 d[key] = d[key] === value && key !== "evidence" ? null : value;
                 changed();
@@ -283,6 +271,15 @@
           ),
         ),
       );
+      const group = container.closest(".metric-group");
+      const name = group.querySelector(".metric-name");
+      if (info.summary) name.title = info.summary;
+      let description = group.querySelector(".metric-desc");
+      if (!description) {
+        description = el("p", { class: "metric-desc" });
+        group.append(description);
+      }
+      description.textContent = info.values?.[d[key]] ?? "Not selected yet.";
     }
   }
 
@@ -477,8 +474,13 @@
     return hint ? hint[1] : `Inputs incomplete: ${message}`;
   }
 
-  function fact(label, ...value) {
-    return el("div", { class: "decision-row" }, el("dt", { text: label }), el("dd", {}, ...value));
+  function fact(label, hint, ...value) {
+    return el(
+      "div",
+      { class: "decision-row" },
+      el("dt", { text: label, title: hint }),
+      el("dd", {}, ...value),
+    );
   }
 
   function renderDecision(result) {
@@ -512,23 +514,44 @@
     const rows = [
       fact(
         "BOD 26-04 baseline",
+        catalog.result_info.bod_baseline,
         el("span", { class: "timeline-key", text: baselineKey }),
         ` ${baselineLabel}`,
         el("span", { class: "muted small block", text: DECISION_BASIS[d.decision_basis] || d.decision_basis }),
       ),
       fact(
         "AIVSS recommendation",
+        catalog.result_info.aivss_recommendation,
         d.aivss_recommended_timeline
           ? el("span", { class: "timeline-key accent", text: d.aivss_recommended_timeline })
           : null,
         d.aivss_recommended_timeline ? ` ${d.aivss_recommended_label}` : null,
         el("span", { class: "muted small block", text: `${overlay} Overlay status: ${d.overlay_status}.` }),
       ),
-      fact("Exploitation evidence", d.exploitation.rationale),
+      fact(
+        "Exploitation evidence",
+        catalog.decision_inputs.evidence.summary,
+        d.exploitation.rationale,
+      ),
     ];
     const notes = [el("p", { class: "muted small", text: d.note })];
     if (d.missing_metadata_faq_applied) {
       notes.push(el("p", { class: "muted small", text: "CISA's missing-metadata FAQ rule was applied (60-day timeline)." }));
+    }
+    const tableId = d.ssvc?.decision_table || d.bod_2604_decision_table;
+    if (tableId) {
+      const source = d.ssvc?.decision_table_source || d.bod_2604_model_source;
+      notes.push(
+        el(
+          "p",
+          { class: "muted small" },
+          "Decision table: ",
+          source
+            ? el("a", { href: source, target: "_blank", rel: "noopener" }, el("code", { text: tableId }))
+            : el("code", { text: tableId }),
+          " (CERT/CC SSVC, CISA BOD 26-04).",
+        ),
+      );
     }
     box.replaceChildren(
       el("h4", { class: "decision-title", text: "Remediation timeline" }),
@@ -557,6 +580,27 @@
     } catch {
       window.prompt("Copy this:", text);
     }
+  }
+
+  function applyStaticHints() {
+    const inputs = catalog.decision_inputs;
+    const results = catalog.result_info;
+    const hint = (selector, text) => {
+      const node = document.querySelector(selector);
+      if (node && text) node.title = text;
+    };
+    hint("#decision-enabled ~ span", inputs.enabled.summary);
+    hint("#exposure-source", inputs.publicly_exposed_source.summary);
+    hint('label:has(> #exposure-source) .field-label', inputs.publicly_exposed_source.summary);
+    hint("#cve-id", inputs.cve_id.summary);
+    hint('label:has(> #cve-id) .field-label', inputs.cve_id.summary);
+    hint("#fceb-scope ~ span", inputs.fceb_bod_2604_scope.summary);
+    hint(".result-card .score-label", results.severity);
+    hint("#result-rating", results.severity_rating);
+    hint(".result-facts div:nth-child(1) dt", results.effect_class);
+    hint(".result-facts div:nth-child(2) dt", results.macrovector);
+    hint("#result-class", results.effect_class);
+    hint("#result-macrovector", results.macrovector);
   }
 
   function bindStaticControls() {
@@ -608,6 +652,7 @@
     try {
       const engine = await window.AivssEngine.ready((message) => { status.textContent = message; });
       catalog = engine.catalog;
+      applyStaticHints();
     } catch (err) {
       status.textContent = "";
       showError(

@@ -372,6 +372,41 @@ AGENTIC_METRIC_NAMES: dict[str, str] = {
     "TD": "Traceability Deficit",
 }
 
+AGENTIC_METRIC_SUMMARIES: dict[str, str] = {
+    "LC": (
+        "How directly attacker-controlled natural language reaches a "
+        "security-relevant decision or tool call."
+    ),
+    "CP": (
+        "How long attacker-controlled context or memory survives, and whether it "
+        "outlives the session that introduced it."
+    ),
+    "AP": (
+        "How far the effect travels: contained in the agent's own scope, or across "
+        "a trust boundary to other agents, tenants, or downstream systems."
+    ),
+    "SR": (
+        "How reliably the exploit succeeds within the enforced production retry "
+        "budget, given that model behaviour is non-deterministic."
+    ),
+    "EX": (
+        "How tightly the tools, skills, MCP servers and plugins reachable on the "
+        "exploitation path are constrained."
+    ),
+    "PT": (
+        "Whether the provider, model and deployment configuration are enforced, "
+        "auditable and verifiable at runtime."
+    ),
+    "CA": (
+        "Whether hard aggregate limits bound attacker-triggered spending — tokens, "
+        "paid calls, compute, retries, fan-out and queued work."
+    ),
+    "TD": (
+        "Whether responders could reconstruct what the agent did and which "
+        "principals it affected. Mandatory metadata; it never changes the outcome."
+    ),
+}
+
 AGENTIC_EFFECT_CLASS_LABELS: dict[str, str] = {
     "A0": "No class-based promotion",
     "A1": "Agentic characteristics present",

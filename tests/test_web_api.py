@@ -214,3 +214,43 @@ def test_manifest_pins_installed_cvss_version():
     from importlib import metadata
 
     assert manifest()["packages"] == [f"cvss=={metadata.version('cvss')}"]
+
+
+def test_every_cvss_metric_and_value_has_help_text():
+    from aivss_calc.cvss_metrics import cvss_metric_info
+    from aivss_calc.macrovector import (
+        BASE_METRICS,
+        ENV_REQUIREMENT_METRICS,
+        MODIFIED_METRICS,
+        THREAT_METRICS,
+    )
+
+    info = cvss_metric_info()
+    expected = {
+        **BASE_METRICS,
+        **THREAT_METRICS,
+        **ENV_REQUIREMENT_METRICS,
+        **MODIFIED_METRICS,
+    }
+    assert set(info) == set(expected)
+    for metric, values in expected.items():
+        entry = info[metric]
+        assert entry["name"].strip()
+        assert entry["summary"].strip().endswith(".")
+        assert list(entry["values"]) == list(values), metric
+        for code, value in entry["values"].items():
+            assert value["label"].strip(), (metric, code)
+            assert value["summary"].strip().endswith("."), (metric, code)
+
+
+def test_every_agentic_metric_and_decision_input_has_help_text():
+    catalog = calculator_catalog()
+    for metric in catalog["rubric"]["metrics"]:
+        assert catalog["metric_names"][metric].strip()
+        assert catalog["metric_summaries"][metric].strip().endswith(".")
+    for key, info in catalog["decision_inputs"].items():
+        assert info["summary"].strip(), key
+        for value, text in info.get("values", {}).items():
+            assert text.strip().endswith("."), (key, value)
+    assert all(text.strip() for text in catalog["result_info"].values())
+    assert set(catalog["cvss_groups"]) == {"base", "threat", "environmental"}

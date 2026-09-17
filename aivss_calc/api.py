@@ -13,6 +13,7 @@ from .ai_metrics import (
     AGENTIC_EFFECT_CLASS_LABELS,
     AGENTIC_METRIC_NAMES,
     AGENTIC_METRIC_ORDER,
+    AGENTIC_METRIC_SUMMARIES,
     AGENTIC_METRICS,
     ASSURANCE_AGENTIC_METRICS,
     CLASSIFYING_AGENTIC_METRICS,
@@ -21,6 +22,7 @@ from .ai_metrics import (
     parse_aivss_vector,
     split_ai_vector,
 )
+from .cvss_metrics import CVSS_GROUP_INFO, cvss_metric_info
 from .cvss_score import score_cvss_bte, severity_rating
 from .decision import TIMELINE_LABELS, TIMELINE_URGENCY, ExploitationEvidence, decide
 from .macrovector import (
@@ -34,6 +36,107 @@ from .macrovector import (
 from .scenarios import SCENARIOS
 from .taxonomy import ASI_TOP_10
 from .versions import CALCULATOR_VERSION, RUBRIC_VERSION, SPEC_VERSION
+
+# Plain-language help for the Level 2 decision inputs and the result panel.
+DECISION_INPUT_INFO: dict[str, dict[str, Any]] = {
+    "enabled": {
+        "summary": (
+            "Adds the Level 2 decision track: the unmodified SSVC / BOD 26-04 "
+            "timeline plus the non-binding AIVSS overlay."
+        ),
+    },
+    "publicly_exposed": {
+        "summary": "Is the affected asset reachable from the public internet?",
+        "values": {
+            "true": "Reachable from the public internet.",
+            "false": "Only reachable from inside the network or another trust boundary.",
+        },
+    },
+    "publicly_exposed_source": {
+        "summary": (
+            "Where the exposure fact comes from — an asset inventory, an external "
+            "scan, or similar. Recorded with the decision; it is never guessed."
+        ),
+    },
+    "automatable": {
+        "summary": (
+            "Can reconnaissance, weaponisation, delivery and exploitation all be "
+            "reliably automated across many targets (SSVC Automatable)?"
+        ),
+        "values": {
+            "true": "An attacker can script the whole chain and run it at scale.",
+            "false": "Some step needs human judgement or target-specific work.",
+        },
+    },
+    "technical_impact": {
+        "summary": "How much control successful exploitation hands the attacker (SSVC Technical Impact).",
+        "values": {
+            "partial": "Limited control or information; the attacker cannot fully govern the component.",
+            "total": "Full control of the component's behaviour, or all of its information.",
+        },
+    },
+    "evidence": {
+        "summary": (
+            "The strongest factual exploitation evidence you hold. A stronger rung "
+            "always outranks a weaker one; EPSS is never a rung."
+        ),
+        "values": {
+            "none": "No affirmative exploitation evidence was supplied.",
+            "poc": "A public or private proof of concept exists.",
+            "observed_local": (
+                "Your organisation observed and documented exploitation. Suitable for "
+                "non-CVE agentic findings; not CISA-verified."
+            ),
+        },
+    },
+    "cve_id": {
+        "summary": (
+            "The CVE ID, if this finding has one. KEV, Vulnrichment and BOD "
+            "compliance results all require it."
+        ),
+    },
+    "kev": {
+        "summary": (
+            "Is the CVE listed in CISA's Known Exploited Vulnerabilities catalog? "
+            "It must be answered explicitly for a CVE decision."
+        ),
+        "values": {
+            "true": "Listed in KEV — the authoritative top rung of the evidence ladder.",
+            "false": "Not listed in KEV.",
+        },
+    },
+    "fceb_bod_2604_scope": {
+        "summary": (
+            "Tick only for a US federal civilian (FCEB) asset within the scope of BOD "
+            "26-04. The BOD timeline then becomes a compliance obligation instead of "
+            "informative guidance."
+        ),
+    },
+}
+
+RESULT_INFO: dict[str, str] = {
+    "severity": (
+        "Normative AIVSS severity: the CVSS v4.0 Base + Threat + Environmental score. "
+        "Agentic metrics never add to this number."
+    ),
+    "severity_rating": "The CVSS v4.0 qualitative band this score falls in.",
+    "effect_class": (
+        "Ordinal class derived from LC, CP, AP and SR. Only A2 can trigger the "
+        "remediation overlay, and no class changes the severity number."
+    ),
+    "macrovector": (
+        "The CVSS v4.0 equivalence class (EQ1-EQ6) this vector belongs to. The score "
+        "is interpolated within the class, so it is usually below the class ceiling."
+    ),
+    "bod_baseline": (
+        "The unmodified SSVC / BOD 26-04 outcome. It is always reported alongside the "
+        "AIVSS recommendation."
+    ),
+    "aivss_recommendation": (
+        "The AIVSS candidate overlay: the baseline advanced one tier when the Effect "
+        "Class is A2. Non-binding and experimental-uncalibrated."
+    ),
+}
 
 PROFILE_NOTE = (
     "Normative AIVSS severity equals CVSS-BTE. "
@@ -120,8 +223,16 @@ def calculator_catalog() -> dict[str, Any]:
         },
         "rubric": rubric(),
         "metric_names": dict(AGENTIC_METRIC_NAMES),
+        "metric_summaries": dict(AGENTIC_METRIC_SUMMARIES),
         "effect_classes": dict(AGENTIC_EFFECT_CLASS_LABELS),
         "effect_class_status": EFFECT_CLASS_STATUS,
+        "cvss_metric_info": cvss_metric_info(),
+        "cvss_groups": {k: dict(v) for k, v in CVSS_GROUP_INFO.items()},
+        "decision_inputs": {
+            key: {inner: value for inner, value in info.items()}
+            for key, info in DECISION_INPUT_INFO.items()
+        },
+        "result_info": dict(RESULT_INFO),
         "cvss_metrics": {
             "base": {k: list(v) for k, v in BASE_METRICS.items()},
             "threat": {k: list(v) for k, v in THREAT_METRICS.items()},

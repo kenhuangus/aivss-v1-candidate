@@ -757,6 +757,16 @@ details.metric-panel[open] > summary { margin-bottom: 0.75rem; }
   font-weight: 500;
 }
 
+/* Signals that the name carries an explanation on hover. */
+.metric-name[title],
+.field-label[title],
+.decision-row dt[title],
+.score-label[title] {
+  text-decoration: underline dotted rgba(21, 21, 20, 0.28);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
 .metric-name abbr {
   text-decoration: none;
   font-size: 0.72rem;
