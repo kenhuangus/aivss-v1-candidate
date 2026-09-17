@@ -77,6 +77,7 @@ http://127.0.0.1:8765/ — CVSS-BTE severity scores, effect classes, and
 SSVC/BOD remediation timelines for all ten ASI reference scenarios.
 
 Live demo (GitHub Pages): https://kenhuangus.github.io/aivss-v1-candidate/
+Interactive slide deck: https://kenhuangus.github.io/aivss-v1-candidate/slides.html
 
 Regenerate all OWASP ASI reference inputs and the summary from the single
 scenario catalog:
@@ -91,8 +92,19 @@ outcomes. ASI category names come from the
 [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/);
 OWASP does not endorse this AIVSS candidate.
 
+## Presentation slides
+
+An interactive 23-slide HTML deck covers the AIVSS 1.0 decoupled architecture,
+CVSS v4.0 interpretations, the 8-metric profile, SSVC / CISA BOD 26-04 timelines,
+and the EchoLeak (`CVE-2025-32711`) case study:
+
+- **Live presentation (GitHub Pages):** https://kenhuangus.github.io/aivss-v1-candidate/slides.html
+- **Repository source:** [slides.html](slides.html) (mirrored at [docs/slides.html](docs/slides.html))
+- **Navigation controls:** Arrow keys or Space to advance, `F` for fullscreen, `M` to toggle Grid View, and `G` to jump to a specific slide.
+
 ## Authoritative documents
 
+- [Masterclass slides](slides.html): interactive 23-slide deck on architecture, scoring, and remediation ([Live](https://kenhuangus.github.io/aivss-v1-candidate/slides.html))
 - [SSVC / BOD 26-04 Layer 3](docs/SSVC.md): decision table, namespaces, overlay rules
 - [Metric rubric](docs/METRIC-RUBRIC.md): value definitions and decision rules
 - [Scoring](docs/SCORING.md): algorithms, invariants, and experimental status
