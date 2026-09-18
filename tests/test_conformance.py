@@ -5,8 +5,12 @@ from __future__ import annotations
 import copy
 import json
 import pathlib
-import tomllib
 from itertools import product
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10: tomllib is stdlib from 3.11
+    import tomli as tomllib
 
 import pytest
 

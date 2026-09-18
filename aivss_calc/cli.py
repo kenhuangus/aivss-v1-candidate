@@ -13,25 +13,19 @@ from . import __version__
 from .ai_metrics import (
     AI_METRICS,
     AIProfile,
-    AGENTIC_METRIC_ORDER,
-    AGENTIC_METRICS,
-    ADJUSTMENT_AGENTIC_METRICS,
-    CLASSIFYING_AGENTIC_METRICS,
-    EFFECT_CLASS_STATUS,
     parse_aivss_vector,
     split_ai_vector,
 )
+from .api import decision_report, profile_report, rubric
 from .assessment import assess, assessment_from_payload
-from .cvss_score import score_cvss_bte
-from .decision import BOD_2604_TABLE, ExploitationEvidence, decide
+from .decision import BOD_2604_TABLE, ExploitationEvidence
 from .demo_server import run_demo
 from .legacy import score_legacy
-from .macrovector import _lookup_table, macrovector, parse_cvss_vector
+from .macrovector import _lookup_table
 from .priority import compute_priority
 from .scenarios import SCENARIOS, scenario_payload
 from .taxonomy import ASI_TOP_10
 from .validation import validate_assessment_input, validate_report
-from .versions import RUBRIC_VERSION
 
 ASSURANCE_METRICS = ("EX", "PT", "CA", "TD")
 CLASSIFYING_METRICS = ("LC", "CP", "AP", "SR")
@@ -118,46 +112,19 @@ def cmd_profile(args: argparse.Namespace) -> int:
         raise ValueError(
             "profile requires a current-version AIVSS vector or all eight metric flags"
         )
-    metrics = parse_cvss_vector(cvss_only)
-    mv = macrovector(metrics)
-    score = score_cvss_bte(cvss_only)
-    payload: dict[str, Any] = {
-        "mode": "interpretation",
-        "status": "normative",
-        "cvss_vector": cvss_only,
-        "aivss_vector": profile.to_vector(),
-        "macrovector": mv,
-        "cvss_bte": score,
-        "aivss": score,
-        "note": (
-            "Normative AIVSS severity equals CVSS-BTE. "
-            "LC/CP/AP/SR determine the ordinal Agentic Effect Class; "
-            "EX/PT/CA/TD are descriptive profile metadata."
-        ),
-        "agentic_ai_profile": profile.describe(),
-        "agentic_effect_class": profile.agentic_effect_class(),
-        "agentic_effect_class_status": EFFECT_CLASS_STATUS,
-    }
-    _emit(payload)
+    _emit(profile_report(cvss_only, profile))
     return 0
 
 
 def cmd_decide(args: argparse.Namespace) -> int:
-    agentic_effect_class = args.agentic_effect_class or "A0"
-    td = None
-    if args.vector:
-        _, embedded = split_ai_vector(args.vector)
-        if embedded is not None:
-            td = embedded.td
-            agentic_effect_class = embedded.agentic_effect_class()
     _emit(
-        decide(
+        decision_report(
             evidence=_evidence_from_args(args),
+            vector=args.vector,
+            agentic_effect_class=args.agentic_effect_class,
             publicly_exposed=args.publicly_exposed,
             publicly_exposed_source=args.publicly_exposed_source,
             decision_data_observed_at=args.decision_data_observed_at,
-            agentic_effect_class=agentic_effect_class,
-            td=td,
             automatable=args.automatable,
             technical_impact=args.technical_impact,
             cve_id=args.cve_id,
@@ -262,21 +229,7 @@ def cmd_taxonomy(args: argparse.Namespace) -> int:
 
 def cmd_rubric(args: argparse.Namespace) -> int:
     """Emit the exhaustive value sets for all eight Agentic AI metrics."""
-    metrics: dict[str, dict[str, dict[str, str]]] = {}
-    for name in AGENTIC_METRIC_ORDER:
-        metrics[name] = {
-            code: {"label": label, "summary": definition}
-            for code, (label, definition) in AGENTIC_METRICS[name].items()
-        }
-    _emit(
-        {
-            "rubric_version": RUBRIC_VERSION,
-            "reference": "docs/METRIC-RUBRIC.md",
-            "classifying_metrics": list(CLASSIFYING_AGENTIC_METRICS),
-            "assurance_metrics": list(ADJUSTMENT_AGENTIC_METRICS),
-            "metrics": metrics,
-        }
-    )
+    _emit(rubric())
     return 0
 
 
