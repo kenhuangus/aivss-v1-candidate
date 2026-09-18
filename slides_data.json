@@ -765,34 +765,37 @@
     "lang_tag": "BASH",
     "highlight_lines": [
       2,
-      7,
-      13,
-      17
+      5,
+      11,
+      15
     ],
     "code_lines": [
       "# 1. Install the verified AIVSS 1.0 calculator package",
       "pip install -e \".[dev]\"",
       "",
-      "# 2. Run the automated test suite (127 test cases passing)",
+      "# 2. Run the automated test suite (177 test cases passing)",
       "pytest tests/test_aivss.py -v",
       "",
       "# 3. Assess a structured finding against normative scoring and SSVC",
       "aivss-calc assess examples/asi06-example.json",
       "",
-      "# 4. Verify vector syntax and compute standalone severity",
-      "aivss-calc score \"CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P\"",
+      "# 4. Score a CVSS v4.0 vector with its AIVSS 1.0 extension vector",
+      "aivss-calc profile \"CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:H/SI:L/SA:N/E:P\" \\",
+      "  --aivss-vector \"AIVSS:1.0/LC:I/CP:C/AP:N/SR:P/EX:W/PT:L/CA:N/TD:H\"",
       "",
-      "# 5. Evaluate SSVC deployer decision table with dated EPSS metadata",
-      "aivss-calc decide --epss 0.42 --epss-date 2026-08-27 \\",
-      "  --publicly-exposed true --automatable true \\",
-      "  --technical-impact total --kev false",
+      "# 5. Evaluate the SSVC / BOD 26-04 deployer decision table",
+      "aivss-calc decide --cve-id CVE-2025-32711 --publicly-exposed true \\",
+      "  --publicly-exposed-source \"internet-facing web portal\" \\",
+      "  --decision-data-observed-at 2026-08-27T00:00:00Z --kev false \\",
+      "  --automatable true --technical-impact total --epss 0.42 \\",
+      "  --epss-date 2026-08-27",
       "",
       "# 6. Verify full package integrity and schema compliance",
       "aivss-calc verify"
     ],
     "concepts": [
       {
-        "tag": "127 PYTEST CASES",
+        "tag": "177 PYTEST CASES",
         "title": "Exhaustive Engine Verification",
         "desc": "100% test coverage across MacroVector interpolation, 16-row SSVC deployer tables, Wilson confidence interval bounds, vector regex syntax, and JSON report schema adherence."
       },
