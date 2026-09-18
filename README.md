@@ -1,5 +1,22 @@
 # AIVSS 1.0
 
+## 🌐 Try it online
+
+Two live resources are hosted for this project — no installation needed:
+
+1. **Interactive Web Calculator** — score an agentic AI vulnerability in your
+   browser. Pick the CVSS v4.0 and Agentic AI metrics or start from one of the
+   ten OWASP Agentic Top 10 examples, and get the CVSS-BTE severity, Effect
+   Class, and optional SSVC / CISA BOD 26-04 remediation timeline instantly.
+   It runs the exact same reference code as the CLI.
+   **→ https://kenhuangus.github.io/aivss-v1-candidate/**
+
+2. **Interactive Slide Deck** — a 23-slide masterclass presentation covering
+   the AIVSS 1.0 decoupled architecture, CVSS v4.0 interpretation, the
+   eight-metric Agentic AI profile, SSVC / BOD 26-04 timelines, and the
+   EchoLeak (`CVE-2025-32711`) case study. Use arrow keys to navigate.
+   **→ https://kenhuangus.github.io/aivss-v1-candidate/slides.html**
+
 AIVSS is a candidate extension profile for describing vulnerabilities in
 Agentic AI systems. It keeps the official CVSS v4.0 vector and score intact and
 records eight Agentic AI metrics in a separate extension vector.
@@ -98,8 +115,7 @@ The page runs this package itself through
 cannot drift from it. Loading the runtime takes a few seconds on first visit and
 needs network access to the Pyodide CDN; the CLI works offline.
 
-Live demo (GitHub Pages): https://kenhuangus.github.io/aivss-v1-candidate/
-Interactive slide deck: https://kenhuangus.github.io/aivss-v1-candidate/slides.html
+Live demo (GitHub Pages): see **[Try it online](#-try-it-online)** at the top of this README.
 
 Regenerate all OWASP ASI reference inputs and the summary from the single
 scenario catalog:
@@ -118,7 +134,8 @@ OWASP does not endorse this AIVSS candidate.
 
 An interactive 23-slide HTML deck covers the AIVSS 1.0 decoupled architecture,
 CVSS v4.0 interpretations, the 8-metric profile, SSVC / CISA BOD 26-04 timelines,
-and the EchoLeak (`CVE-2025-32711`) case study:
+and the EchoLeak (`CVE-2025-32711`) case study — see the
+**[Try it online](#-try-it-online)** link at the top for the live deck.
 
 - **Live presentation (GitHub Pages):** https://kenhuangus.github.io/aivss-v1-candidate/slides.html
 - **Repository source:** [slides.html](slides.html) (mirrored at [docs/slides.html](docs/slides.html))
